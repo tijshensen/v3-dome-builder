@@ -15,3 +15,7 @@ _*.js
 _*.py
 _*.json
 _*.txt
+
+# local capture shots
+.tmp-shots/
+deck/.tmp-shots/

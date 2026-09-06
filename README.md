@@ -70,6 +70,29 @@ Open [`assembly.html`](assembly.html).
 - Sequence: overview -> apex/crown -> ring-by-ring -> door halves -> windows -> fit-check.
 - Hex shop fabrication steps remain in [`index.html`](index.html).
 
+
+
+## Wood deck guide (first cut)
+
+Interactive **20′ Trillium wood deck** shop guide for the **18′ 5/8 3v** dome (nearest PDF diameter — locked plan numbers, no 18′ interpolation).
+
+```bash
+npx serve .
+```
+
+Open [`deck/index.html`](deck/index.html) (or `/deck/?step=0`).
+
+| Path | Purpose |
+|------|---------|
+| [`deck/deck-specs.js`](deck/deck-specs.js) | **Single source of truth** — 20′ Component Dimensions, Girder Layout - 20′, materials, tools |
+| [`deck/index.html`](deck/index.html) | Steps + Machine setup + cut list + in/mm · materials LEFT / machine RIGHT on saw steps |
+
+- UI label (exact): **20′ deck plan · for 18′ 5/8 3v dome**
+- Cuts: joists (square); rim / outer+inner blocks @ 12° L-L; outer girders @ 18° L-L; inner girders @ 30° L-L
+- Machines (written setup; visual polish deferred): **MAKITA LS1019L** primary for angled/cross cuts; circular saw OK for square joists; DEWALT DWE7492 optional
+- Source: Trillium Dome & Yurt Wood Deck PDF (personal use) — do **not** commit the PDF into this repo
+- Hex fab (`index.html`) and assembly remain separate
+
 ## Follow-ups
 
 Pent/Door polish, full-dome view, BOM export, URL state, offline Three.js, base/pony/door components.

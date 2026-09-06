@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>20′ deck plan · for 18′ 5/8 3v dome</title>
+  <style>
+    :root {
+      --bg: #121418;
+      --panel: #1c2028;
+      --line: #2e3542;
+      --text: #e8eaed;
+      --muted: #9aa3b2;
+      --hex: #3d8bfd;
+      --wood: #c48a4a;
+      --accent: #7dcea0;
+      --warn: #f0a202;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+    #c { display: block; width: 100%; height: 100%; }
+    .ui {
+      position: absolute; top: 12px; left: 12px; width: min(400px, calc(100% - 24px));
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+      backdrop-filter: blur(8px); max-height: calc(100% - 24px); overflow: auto;
+      z-index: 10;
+    }
+    h1 { font-size: 14px; margin: 0 0 8px; font-weight: 650; }
+    h2 { font-size: 11px; margin: 12px 0 6px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .row { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+    button {
+      background: #2a3140; color: var(--text); border: 1px solid var(--line);
+      border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit;
+    }
+    button:hover:not(:disabled) { border-color: #4a5568; }
+    button.active { background: #3a5a8a; border-color: var(--hex); }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    .step { width: 100%; text-align: left; font-size: 12px; padding: 5px 8px; }
+    .dims { color: var(--muted); font-size: 12px; white-space: pre-wrap; margin: 6px 0 0; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    .hint a { color: var(--accent); }
+    .cutbox, .matbox {
+      background: #161a22; border: 1px solid var(--line); border-radius: 8px;
+      padding: 8px 10px; font-size: 12px; color: var(--muted); white-space: pre-wrap;
+      margin-top: 4px;
+    }
+    .navrow { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
+    .navrow .spacer { flex: 1; color: var(--muted); font-size: 12px; text-align: center; }
+    .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: #2a3140; color: var(--muted); margin-left: 4px; }
+    .machinesetup {
+      background: #161a22; border: 1px solid var(--hex); border-radius: 8px;
+      padding: 8px 10px; margin-top: 8px; font-size: 12px;
+    }
+    .machinesetup .ms-title {
+      font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--hex); margin: 0 0 6px;
+    }
+    .machinesetup .ms-tools { color: var(--text); font-weight: 600; margin: 0 0 4px; }
+    .machinesetup ul { margin: 4px 0 0; padding-left: 18px; color: var(--muted); }
+    .machinesetup li { margin: 2px 0; }
+    .split-chrome {
+      position: absolute; inset: 0; pointer-events: none; z-index: 3;
+    }
+    .split-chrome[hidden] { display: none !important; }
+    .split-divider {
+      position: absolute; left: 50%; top: 8%; bottom: 8%; width: 2px;
+      transform: translateX(-50%);
+      background: color-mix(in srgb, #d7dde8 75%, var(--line));
+      box-shadow: 0 0 0 1px #00000066;
+    }
+    .split-label {
+      position: absolute; top: 14px;
+      font: 700 11px/1 system-ui; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line);
+      background: #1c2028cc;
+    }
+    .split-label-left {
+      left: max(28%, calc(var(--split-left, 424px) + 8%));
+      transform: translateX(-50%);
+      color: var(--wood); border-color: #6a4a2a;
+    }
+    .split-label-right {
+      left: 72%; transform: translateX(-50%);
+      color: #f5c518; border-color: #f5c518;
+    }
+    .split-chrome.makita .split-label-right { color: #2ec4b6; border-color: #1a8f8a; }
+    .locknote {
+      font-size: 11px; color: var(--warn); margin: 4px 0 0;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="ui">
+    <h1 id="title">20′ deck plan · for 18′ 5/8 3v dome</h1>
+    <p class="locknote">Locked 20′ Trillium plan (nearest PDF size for 18′ 5/8 3v) — do not interpolate.</p>
+    <div class="row">
+      <button id="uIN" class="active" type="button">in</button>
+      <button id="uMM" type="button">mm</button>
+      <button id="btnReset" type="button">Reset view</button>
+    </div>
+    <div class="navrow">
+      <button id="prev" type="button">← Prev</button>
+      <span class="spacer" id="stepLabel">1 / 12</span>
+      <button id="next" type="button">Next →</button>
+    </div>
+    <div class="row" id="steps"></div>
+    <div class="dims" id="dims"></div>
+    <div class="machinesetup" id="machinesetup" aria-live="polite"></div>
+    <h2>Cut list (20′ Component Dimensions)</h2>
+    <div class="cutbox" id="cutlist"></div>
+    <h2>Materials (PDF p2)</h2>
+    <div class="matbox" id="matlist"></div>
+    <div class="hint">
+      Drag orbit · scroll zoom · right-drag pan<br>
+      Machine polish deferred — written setup + schematics for first cut.<br>
+      Source: Trillium Dome &amp; Yurt Wood Deck PDF (personal use) — Component Dimensions / Girder Layout 20′ / Build Notes.<br>
+      Video: <a href="https://youtu.be/Sl9fEp-27EM" target="_blank" rel="noopener">youtu.be/Sl9fEp-27EM</a>
+      · <a href="/index.html">Hex shop</a> · <a href="/assembly.html">Assembly</a>
+      <span class="badge">deck first-cut</span>
+    </div>
+  </div>
+  <div id="splitChrome" class="split-chrome" hidden aria-hidden="true">
+    <div class="split-divider"></div>
+    <div class="split-label split-label-left">Materials</div>
+    <div class="split-label split-label-right">Machine</div>
+  </div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "/vendor/three/three.module.js",
+    "three/addons/": "/vendor/three/addons/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import {
+  META, DECK_LABEL, AREA_SQ_FT,
+  JOIST, RIM, OUTER_BLOCK, INNER_BLOCK, OUTER_GIRDER, INNER_GIRDER,
+  COMPONENTS, LAYOUT, MATERIALS, PLAN_IN,
+  TOOL_TABLE_SAW, TOOL_MITER_SAW, TOOL_CIRCULAR, VIDEO_URL
+} from '/deck/deck-specs.js';
+
+document.getElementById('title').textContent = DECK_LABEL;
+
+const _qs = new URLSearchParams(location.search);
+let step = Math.max(0, Math.min(11, parseInt(_qs.get('step') || '0', 10) || 0));
+let units = 'in';
+
+function fmt(mm) {
+  if (units === 'mm') return `${mm} mm`;
+  const locked = PLAN_IN.get(mm);
+  if (locked) return locked;
+  // fallback inches (should not hit for locked plan dims)
+  const inches = mm / 25.4;
+  const whole = Math.floor(inches);
+  const frac = inches - whole;
+  const sixteenths = Math.round(frac * 16);
+  if (sixteenths === 0) return `${whole}"`;
+  if (sixteenths === 16) return `${whole + 1}"`;
+  return `${whole} ${sixteenths}/16"`;
+}
+
+function fmtComp(c) {
+  const ang = c.angleDeg != null ? `, ${c.angleDeg}°` : ' · square ends';
+  const meas = c.measure ? ` ${c.measure}` : '';
+  return `${c.qty}× ${c.name} @ ${fmt(c.lenMm)}${meas}${ang}`;
+}
+
+const STEPS = [
+  {
+    id: 0,
+    title: '1. Overview',
+    split: false,
+    brand: null,
+    text: () =>
+      `${DECK_LABEL}. Area ${AREA_SQ_FT} sq ft. Nearest Trillium PDF diameter for the 18′ 5/8 3v dome — use locked 20′ Component Dimensions (PDF p4), not interpolated 18′ lengths.\n\nLayout check (PDF Girder Layout - 20′, p6): outer side ${fmt(LAYOUT.outerSideMm)}; inner Δ ${fmt(LAYOUT.innerTriangleMm)}; height ${fmt(LAYOUT.heightMm)}; to center ${fmt(LAYOUT.toCenterMm)}; diagonal ${fmt(LAYOUT.diagonalMm)}.`,
+    machineSetup: {
+      machines: () => 'Read plans · no saw yet',
+      settings: () => [
+        'Confirm 20′ Component Dimensions table (PDF p4)',
+        'Skim Girder Layout - 20′ (PDF p6) and Build Notes (PDF p9)',
+        `Shop tools later: ${TOOL_MITER_SAW} · ${TOOL_CIRCULAR} · ${TOOL_TABLE_SAW} optional`
+      ]
+    },
+    view: 'overview'
+  },
+  {
+    id: 1,
+    title: '2. Materials pull',
+    split: false,
+    brand: null,
+    text: () =>
+      `Pull size-specific lumber for 20′ (PDF Materials p2):\n` +
+      MATERIALS.sizeSpecific.map(m => `• ${m.qty}× ${m.desc}`).join('\n') +
+      `\n\nGeneral: lags, 32′ strapping, 250× 3½″ nails, 15 post/base assemblies, 2×4 bracing.`,
+    machineSetup: {
+      machines: () => 'None / staging',
+      settings: () => [
+        'Stage 2×6 stock for joists / rim / blocking',
+        'Stage 4×6 stock for outer (12′) and inner (8′) girders',
+        'Subfloor: 9 sheets 4×8′; 320× 2″ screws'
+      ]
+    },
+    view: 'materials'
+  },
+  {
+    id: 2,
+    title: '3. Cut joists',
+    split: true,
+    brand: 'makita',
+    text: () =>
+      `Cut ${JOIST.qty} joists @ ${fmt(JOIST.lenMm)} square ends from 2×6×10′ stock (PDF p4). ${JOIST.note}.`,
+    machineSetup: {
+      machines: () => `${TOOL_MITER_SAW} (prefer) · or ${TOOL_CIRCULAR}`,
+      settings: () => [
+        'Miter 0° · bevel 0° (square crosscut)',
+        `Stop block at ${fmt(JOIST.lenMm)}`,
+        `Batch ${JOIST.qty} pieces from 2×6×10′`
+      ]
+    },
+    view: 'cutJoist',
+    piece: JOIST
+  },
+  {
+    id: 3,
+    title: '4. Cut rim',
+    split: true,
+    brand: 'makita',
+    text: () =>
+      `Cut ${RIM.qty} rim pieces @ ${fmt(RIM.lenMm)} long-to-long, ${RIM.angleDeg}° both ends (PDF p4). Measure long point to long point.`,
+    machineSetup: {
+      machines: () => `${TOOL_MITER_SAW}`,
+      settings: () => [
+        `Miter ${RIM.angleDeg}° both ends (mirror)`,
+        'Bevel 0°',
+        `Long-to-long length ${fmt(RIM.lenMm)} — set stop to long points`,
+        'From 2×6×12′ / 2×6×10′ blocking & rim stock'
+      ]
+    },
+    view: 'cutAngle',
+    piece: RIM
+  },
+  {
+    id: 4,
+    title: '5. Cut outer blocks',
+    split: true,
+    brand: 'makita',
+    text: () =>
+      `Cut ${OUTER_BLOCK.qty} outer blocks @ ${fmt(OUTER_BLOCK.lenMm)} long-to-long, ${OUTER_BLOCK.angleDeg}° both ends (PDF p4).`,
+    machineSetup: {
+      machines: () => `${TOOL_MITER_SAW}`,
+      settings: () => [
+        `Miter ${OUTER_BLOCK.angleDeg}° both ends`,
+        'Bevel 0° · long-to-long measure',
+        `Length ${fmt(OUTER_BLOCK.lenMm)}`
+      ]
+    },
+    view: 'cutAngle',
+    piece: OUTER_BLOCK
+  },
+  {
+    id: 5,
+    title: '6. Cut inner blocks',
+    split: true,
+    brand: 'makita',
+    text: () =>
+      `Cut ${INNER_BLOCK.qty} inner blocks @ ${fmt(INNER_BLOCK.lenMm)} long-to-long, ${INNER_BLOCK.angleDeg}° both ends (PDF p4).`,
+    machineSetup: {
+      machines: () => `${TOOL_MITER_SAW}`,
+      settings: () => [
+        `Miter ${INNER_BLOCK.angleDeg}° both ends`,
+        'Bevel 0° · long-to-long measure',
+        `Length ${fmt(INNER_BLOCK.lenMm)}`
+      ]
+    },
+    view: 'cutAngle',
+    piece: INNER_BLOCK
+  },
+  {
+    id: 6,
+    title: '7. Cut outer girders',
+    split: true,
+    brand: 'makita',
+    text: () =>
+      `Cut ${OUTER_GIRDER.qty} outer girders @ ${fmt(OUTER_GIRDER.lenMm)} long-to-long, ${OUTER_GIRDER.angleDeg}° both ends from 4×6×12′ (PDF p4). Prefer LS1019L for thick stock.`,
+    machineSetup: {
+      machines: () => `${TOOL_MITER_SAW} (prefer for 4×6)`,
+      settings: () => [
+        `Miter ${OUTER_GIRDER.angleDeg}° both ends`,
+        'Bevel 0° · long-to-long',
+        `Length ${fmt(OUTER_GIRDER.lenMm)} — confirm capacity on LS1019L`,
+        'Support long stock; cut excess after overlap joint on site if needed (PDF p8)'
+      ]
+    },
+    view: 'cutGirder',
+    piece: OUTER_GIRDER
+  },
+  {
+    id: 7,
+    title: '8. Cut inner girders',
+    split: true,
+    brand: 'makita',
+    text: () =>
+      `Cut ${INNER_GIRDER.qty} inner girders @ ${fmt(INNER_GIRDER.lenMm)} long-to-long, ${INNER_GIRDER.angleDeg}° both ends from 4×6×8′ (PDF p4).`,
+    machineSetup: {
+      machines: () => `${TOOL_MITER_SAW}`,
+      settings: () => [
+        `Miter ${INNER_GIRDER.angleDeg}° both ends`,
+        'Bevel 0° · long-to-long',
+        `Length ${fmt(INNER_GIRDER.lenMm)}`
+      ]
+    },
+    view: 'cutGirder',
+    piece: INNER_GIRDER
+  },
+  {
+    id: 8,
+    title: '9. Site + girder layout',
+    split: false,
+    brand: null,
+    text: () =>
+      `Build Notes (PDF p9): mark proposed center. Template girders with 2×4s or the girders themselves to mark posts.\n\nLayout locks (PDF p6): to center ${fmt(LAYOUT.toCenterMm)}; diagonal ${fmt(LAYOUT.diagonalMm)}; height ${fmt(LAYOUT.heightMm)}; outer side ${fmt(LAYOUT.outerSideMm)}; inner Δ ${fmt(LAYOUT.innerTriangleMm)}. Confirm diagonal and brace so girders do not warp.`,
+    machineSetup: {
+      machines: () => 'String line · tape · laser/string level',
+      settings: () => [
+        'Mark center of deck on site',
+        `Align both girder sets to center; check diagonal ${fmt(LAYOUT.diagonalMm)}`,
+        'Mark post locations — ideally posts support both sides of girder joint'
+      ]
+    },
+    view: 'layout'
+  },
+  {
+    id: 9,
+    title: '10. Posts + mount girders',
+    split: false,
+    brand: null,
+    text: () =>
+      `Move girders aside; set post holes / helical piles / concrete+bracket (PDF p3, p9). Level post heights to laser or string. Set posts, mount and strap girders (16× 8″ GRK lags; 32′ metal strapping — PDF p2).`,
+    machineSetup: {
+      machines: () => 'Drill / driver · level · post brackets',
+      settings: () => [
+        '15 post and base assemblies',
+        'Lag-screw girder joints; strap post → girder (PDF p8 detail)',
+        'Brace with 2×4×10′ as needed'
+      ]
+    },
+    view: 'posts'
+  },
+  {
+    id: 10,
+    title: '11. Joists, rim, blocking',
+    split: false,
+    brand: null,
+    text: () =>
+      `Roll joists, nail rim on first, then add blocking (PDF p9). Rim: ${fmtComp(RIM)}. Outer blocks: ${fmtComp(OUTER_BLOCK)}. Inner blocks: ${fmtComp(INNER_BLOCK)}. Joists: ${fmtComp(JOIST)}. Use ~250× 3½″ framing nails.`,
+    machineSetup: {
+      machines: () => 'Hammer / nailer · square',
+      settings: () => [
+        'Rim first, then blocking between joists',
+        'Keep layout square to girder pentagon',
+        'Optional nailers on joists for rigid insulation (PDF p8)'
+      ]
+    },
+    view: 'framing'
+  },
+  {
+    id: 11,
+    title: '12. Subfloor',
+    split: false,
+    brand: null,
+    text: () =>
+      `Install 9× 4×8′ subfloor sheets (¾–1¼″ ply / T&G or equiv — PDF p3) with 320× 2″ screws. Optional construction adhesive to reduce squeaks (PDF p9). For a yurt: deck full, then cut circle per yurt radius. Deck complete — ${AREA_SQ_FT} sq ft.`,
+    machineSetup: {
+      machines: () => 'Screw gun · circular saw (trim / circle)',
+      settings: () => [
+        '320× 2″ subfloor screws',
+        'Optional adhesive',
+        'Trim overhang; cut circle only if yurt'
+      ]
+    },
+    view: 'subfloor'
+  }
+];
+
+// --- Three.js scene ---
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x121418);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 80);
+camera.position.set(4.5, 3.2, 5.5);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, 0.4, 0);
+
+scene.add(new THREE.HemisphereLight(0xc8d4e8, 0x2a2118, 1.05));
+const sun = new THREE.DirectionalLight(0xfff3e0, 1.25);
+sun.position.set(4, 6, 3);
+scene.add(sun);
+scene.add(new THREE.AmbientLight(0xffffff, 0.28));
+
+const root = new THREE.Group();
+scene.add(root);
+
+const woodMat = new THREE.MeshStandardMaterial({ color: 0xc48a4a, roughness: 0.55, metalness: 0.02 });
+const darkWood = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.5 });
+const accentMat = new THREE.MeshStandardMaterial({ color: 0x3d8bfd, roughness: 0.45, metalness: 0.1 });
+const machineMat = new THREE.MeshStandardMaterial({ color: 0x2a3140, roughness: 0.4, metalness: 0.35 });
+const bladeMat = new THREE.MeshStandardMaterial({ color: 0xb0b8c4, metalness: 0.7, roughness: 0.35 });
+const labelMat = new THREE.MeshBasicMaterial({ color: 0x7dcea0 });
+const postMat = new THREE.MeshStandardMaterial({ color: 0x6b5344, roughness: 0.7 });
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x5a4634, roughness: 0.85 });
+
+function clearRoot() {
+  while (root.children.length) {
+    const o = root.children.pop();
+    o.traverse?.(ch => {
+      if (ch.geometry) ch.geometry.dispose();
+    });
+  }
+}
+
+function board(lenM, wM, tM, mat = woodMat) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(lenM, tM, wM), mat);
+  mesh.position.y = tM / 2;
+  return mesh;
+}
+
+/** Angled board schematic: parallelogram-ish via truncated ends drawn as box + angle wedges */
+function angledBoardSchematic(lenMm, angleDeg, mat = woodMat) {
+  const g = new THREE.Group();
+  const L = Math.min(lenMm, 2800) / 1000; // visual scale cap
+  const scale = L / (lenMm / 1000);
+  const len = lenMm / 1000 * (lenMm > 2800 ? 2800 / lenMm : 1);
+  const w = 0.14;
+  const t = 0.038;
+  const mesh = board(len, w, t, mat);
+  g.add(mesh);
+  // Angle markers at ends (simple triangular fins)
+  const ang = (angleDeg * Math.PI) / 180;
+  const finLen = 0.18;
+  for (const side of [-1, 1]) {
+    const fin = new THREE.Mesh(
+      new THREE.BoxGeometry(finLen, t * 0.95, 0.02),
+      accentMat
+    );
+    fin.position.set(side * (len / 2 - finLen * 0.35), t / 2, w / 2 + 0.03);
+    fin.rotation.y = side * -ang;
+    g.add(fin);
+  }
+  g.userData.visualLen = len;
+  return g;
+}
+
+function miterSawSchematic(brand = 'makita') {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.08, 0.4), machineMat);
+  base.position.y = 0.04;
+  g.add(base);
+  const fence = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.12, 0.02), machineMat);
+  fence.position.set(0, 0.12, -0.12);
+  g.add(fence);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 0.08), brand === 'makita'
+    ? new THREE.MeshStandardMaterial({ color: 0x1a8f8a, roughness: 0.4 })
+    : new THREE.MeshStandardMaterial({ color: 0xf5c518, roughness: 0.4 }));
+  arm.position.set(0, 0.28, 0.05);
+  g.add(arm);
+  const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.01, 32), bladeMat);
+  blade.rotation.z = Math.PI / 2;
+  blade.position.set(0, 0.22, 0.12);
+  g.add(blade);
+  const table = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.28), new THREE.MeshStandardMaterial({ color: 0x3a4250 }));
+  table.position.set(0, 0.09, 0.02);
+  g.add(table);
+  return g;
+}
+
+function pentagonGirderLayout() {
+  const g = new THREE.Group();
+  const R = LAYOUT.toCenterMm / 1000; // ~2.978 m to center
+  const outerLen = LAYOUT.outerSideMm / 1000;
+  // Regular pentagon vertices
+  const verts = [];
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+    verts.push(new THREE.Vector3(Math.cos(a) * R, 0, Math.sin(a) * R));
+  }
+  // Outer girders along edges (visual)
+  for (let i = 0; i < 5; i++) {
+    const a = verts[i];
+    const b = verts[(i + 1) % 5];
+    const mid = a.clone().add(b).multiplyScalar(0.5);
+    const dir = b.clone().sub(a);
+    const len = dir.length();
+    const mesh = board(len * 0.98, 0.14, 0.09, darkWood);
+    mesh.position.copy(mid);
+    mesh.position.y = 0.045;
+    mesh.lookAt(b.x, 0.045, b.z);
+    mesh.rotateY(Math.PI / 2);
+    g.add(mesh);
+  }
+  // Inner triangle hint
+  const ir = LAYOUT.innerTriangleMm / 1000;
+  for (let i = 0; i < 3; i++) {
+    const a0 = -Math.PI / 2 + (i * 2 * Math.PI) / 3;
+    const a1 = -Math.PI / 2 + ((i + 1) * 2 * Math.PI) / 3;
+    const p0 = new THREE.Vector3(Math.cos(a0) * ir * 0.7, 0, Math.sin(a0) * ir * 0.7);
+    const p1 = new THREE.Vector3(Math.cos(a1) * ir * 0.7, 0, Math.sin(a1) * ir * 0.7);
+    const mid = p0.clone().add(p1).multiplyScalar(0.5);
+    const len = p0.distanceTo(p1);
+    const mesh = board(len * 0.95, 0.12, 0.09, woodMat);
+    mesh.position.copy(mid);
+    mesh.position.y = 0.045;
+    mesh.lookAt(p1.x, 0.045, p1.z);
+    mesh.rotateY(Math.PI / 2);
+    g.add(mesh);
+  }
+  // Center mark
+  const c = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.02, 16), accentMat);
+  c.position.y = 0.01;
+  g.add(c);
+  // Ground ring
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(R * 0.98, R * 1.02, 64),
+    new THREE.MeshBasicMaterial({ color: 0x3d8bfd, side: THREE.DoubleSide, transparent: true, opacity: 0.35 })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.005;
+  g.add(ring);
+  return g;
+}
+
+function joistBaySchematic() {
+  const g = new THREE.Group();
+  // Simplified radial joists on a chord
+  const girder = board(3.2, 0.14, 0.09, darkWood);
+  girder.position.set(0, 0.045, 0);
+  g.add(girder);
+  for (let i = -2; i <= 2; i++) {
+    const j = board(2.4, 0.038, 0.14, woodMat);
+    j.rotation.y = Math.PI / 2;
+    j.position.set(i * 0.55, 0.12, 1.1);
+    g.add(j);
+  }
+  const rim = angledBoardSchematic(RIM.lenMm, 12);
+  rim.scale.setScalar(0.7);
+  rim.position.set(0, 0.2, 2.3);
+  g.add(rim);
+  return g;
+}
+
+function buildView(s) {
+  clearRoot();
+  const splitChrome = document.getElementById('splitChrome');
+  if (s.split) {
+    splitChrome.hidden = false;
+    splitChrome.classList.toggle('makita', s.brand === 'makita');
+    // Materials LEFT
+    const left = new THREE.Group();
+    left.position.x = -2.2;
+    if (s.view === 'cutJoist') {
+      const b = board(Math.min(s.piece.lenMm, 2500) / 1000, 0.14, 0.038);
+      left.add(b);
+    } else if (s.view === 'cutAngle' || s.view === 'cutGirder') {
+      const ag = angledBoardSchematic(s.piece.lenMm, s.piece.angleDeg || 12,
+        s.view === 'cutGirder' ? darkWood : woodMat);
+      left.add(ag);
+    } else {
+      left.add(board(2.0, 0.14, 0.038));
+    }
+    // dim plate
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.01, 0.4), new THREE.MeshStandardMaterial({ color: 0x1a2030 }));
+    plate.position.set(0, 0.001, 0.55);
+    left.add(plate);
+    root.add(left);
+
+    // Machine RIGHT
+    const right = new THREE.Group();
+    right.position.x = 2.2;
+    const saw = miterSawSchematic(s.brand || 'makita');
+    saw.scale.setScalar(1.4);
+    right.add(saw);
+    // stock on saw
+    const stock = board(1.2, 0.14, s.view === 'cutGirder' ? 0.09 : 0.038, woodMat);
+    stock.position.set(0, 0.14, 0.05);
+    right.add(stock);
+    root.add(right);
+
+    controls.target.set(0, 0.35, 0);
+    camera.position.set(0.2, 3.8, 6.2);
+  } else {
+    splitChrome.hidden = true;
+    if (s.view === 'overview' || s.view === 'layout' || s.view === 'posts') {
+      const layout = pentagonGirderLayout();
+      root.add(layout);
+      if (s.view === 'posts') {
+        const R = LAYOUT.toCenterMm / 1000;
+        for (let i = 0; i < 5; i++) {
+          const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), postMat);
+          post.position.set(Math.cos(a) * R, 0.45, Math.sin(a) * R);
+          root.add(post);
+          // mid-edge posts
+          const a2 = a + Math.PI / 5;
+          const post2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), postMat);
+          post2.position.set(Math.cos(a2) * R * 0.95, 0.45, Math.sin(a2) * R * 0.95);
+          root.add(post2);
+        }
+        // a few more toward center
+        for (let i = 0; i < 5; i++) {
+          const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+          const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 0.1), postMat);
+          post.position.set(Math.cos(a) * R * 0.35, 0.45, Math.sin(a) * R * 0.35);
+          root.add(post);
+        }
+      }
+      controls.target.set(0, 0.2, 0);
+      camera.position.set(5.5, 6.5, 5.5);
+    } else if (s.view === 'materials') {
+      const stacks = [
+        { n: 3, y: 0, z: -0.8, mat: woodMat, h: 0.038 },
+        { n: 2, y: 0, z: 0.2, mat: darkWood, h: 0.09 },
+        { n: 2, y: 0, z: 1.0, mat: woodMat, h: 0.038 }
+      ];
+      stacks.forEach((st, si) => {
+        for (let i = 0; i < st.n; i++) {
+          const b = board(2.4 - si * 0.2, 0.14, st.h, st.mat);
+          b.position.set(-1.5 + si * 1.5, i * (st.h + 0.01), st.z);
+          root.add(b);
+        }
+      });
+      controls.target.set(0, 0.3, 0);
+      camera.position.set(3.5, 2.8, 4.5);
+    } else if (s.view === 'framing') {
+      root.add(joistBaySchematic());
+      controls.target.set(0, 0.3, 0.8);
+      camera.position.set(3.2, 2.8, 4.2);
+    } else if (s.view === 'subfloor') {
+      const layout = pentagonGirderLayout();
+      root.add(layout);
+      const deck = new THREE.Mesh(
+        new THREE.CircleGeometry(LAYOUT.toCenterMm / 1000 * 1.05, 48),
+        floorMat
+      );
+      deck.rotation.x = -Math.PI / 2;
+      deck.position.y = 0.12;
+      root.add(deck);
+      controls.target.set(0, 0.2, 0);
+      camera.position.set(4.5, 5.5, 4.5);
+    } else {
+      root.add(board(2, 0.14, 0.038));
+      controls.target.set(0, 0.2, 0);
+      camera.position.set(2.5, 2, 3.5);
+    }
+  }
+}
+
+function renderCutList() {
+  const lines = COMPONENTS.map(c => {
+    const ang = c.angleDeg != null ? ` · ${c.angleDeg}° L-L` : ' · square';
+    return `${c.qty}× ${c.name.padEnd(12)} ${fmt(c.lenMm)}${ang}`;
+  });
+  lines.push(`Area ${AREA_SQ_FT} sq ft · PDF Component Dimensions (20′)`);
+  document.getElementById('cutlist').textContent = lines.join('\n');
+}
+
+function renderMaterials() {
+  const a = MATERIALS.sizeSpecific.map(m => `${m.qty}× ${m.desc}`).join('\n');
+  const b = MATERIALS.general.map(m => (m.qty != null ? `${m.qty}× ` : '') + m.desc).join('\n');
+  document.getElementById('matlist').textContent = `Size-specific:\n${a}\n\nGeneral:\n${b}`;
+}
+
+function renderMachine(s) {
+  const el = document.getElementById('machinesetup');
+  const ms = s.machineSetup;
+  const settings = ms.settings();
+  el.innerHTML =
+    `<div class="ms-title">Machine setup</div>` +
+    `<div class="ms-tools">${ms.machines()}</div>` +
+    `<ul>${settings.map(x => `<li>${x}</li>`).join('')}</ul>`;
+}
+
+function renderStep() {
+  const s = STEPS[step];
+  document.getElementById('stepLabel').textContent = `${step + 1} / ${STEPS.length}`;
+  document.getElementById('dims').textContent = `${s.title}\n\n${s.text()}`;
+  renderMachine(s);
+  renderCutList();
+  renderMaterials();
+  document.querySelectorAll('#steps .step').forEach((btn, i) => {
+    btn.classList.toggle('active', i === step);
+  });
+  document.getElementById('prev').disabled = step === 0;
+  document.getElementById('next').disabled = step === STEPS.length - 1;
+  buildView(s);
+  const url = new URL(location.href);
+  url.searchParams.set('step', String(step));
+  history.replaceState(null, '', url);
+}
+
+function buildStepButtons() {
+  const host = document.getElementById('steps');
+  host.innerHTML = '';
+  STEPS.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'step' + (i === step ? ' active' : '');
+    b.textContent = s.title;
+    b.addEventListener('click', () => { step = i; renderStep(); });
+    host.appendChild(b);
+  });
+}
+
+document.getElementById('uIN').addEventListener('click', () => {
+  units = 'in';
+  document.getElementById('uIN').classList.add('active');
+  document.getElementById('uMM').classList.remove('active');
+  renderStep();
+});
+document.getElementById('uMM').addEventListener('click', () => {
+  units = 'mm';
+  document.getElementById('uMM').classList.add('active');
+  document.getElementById('uIN').classList.remove('active');
+  renderStep();
+});
+document.getElementById('prev').addEventListener('click', () => { if (step > 0) { step--; renderStep(); } });
+document.getElementById('next').addEventListener('click', () => { if (step < STEPS.length - 1) { step++; renderStep(); } });
+document.getElementById('btnReset').addEventListener('click', () => {
+  buildView(STEPS[step]);
+});
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+buildStepButtons();
+renderStep();
+
+const __pause = new URLSearchParams(location.search).get('pause') === '1';
+let __frames = 0;
+function tick() {
+  controls.update();
+  renderer.render(scene, camera);
+  __frames++;
+  if (__pause && __frames >= 3) {
+    document.documentElement.setAttribute('data-ready', '1');
+    return; // stop rAF so headless screenshot can exit
+  }
+  requestAnimationFrame(tick);
+}
+tick();
+if (__pause) {
+  // safety: mark ready even if WebGL stalls
+  setTimeout(() => document.documentElement.setAttribute('data-ready', '1'), 2500);
+}
+</script>
+</body>
+</html>
