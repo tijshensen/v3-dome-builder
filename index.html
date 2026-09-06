@@ -60,6 +60,21 @@
     .machinesetup .ms-tools { color: var(--text); font-weight: 600; margin: 0 0 4px; }
     .machinesetup ul { margin: 4px 0 0; padding-left: 18px; color: var(--muted); }
     .machinesetup li { margin: 2px 0; }
+    .machine-hud {
+      position: absolute; right: 12px; top: 12px; width: min(280px, calc(100% - 420px));
+      background: #1c2028ee; border: 2px solid #3d8bfd; border-radius: 12px; padding: 10px 12px;
+      pointer-events: none; z-index: 5;
+    }
+    .machine-hud[hidden] { display: none !important; }
+    .machine-hud .mh-brand { font: 700 14px/1.25 system-ui; margin: 0 0 6px; }
+    .machine-hud.dewalt { border-color: #f5c518; }
+    .machine-hud.dewalt .mh-brand { color: #f5c518; }
+    .machine-hud.makita { border-color: #1a8f8a; }
+    .machine-hud.makita .mh-brand { color: #2ec4b6; }
+    .machine-hud ul { margin: 0; padding-left: 16px; color: var(--muted); font-size: 12px; }
+    .machine-hud li { margin: 2px 0; }
+    .vizrow { display: none; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+    .vizrow.show { display: flex; }
   </style>
 </head>
 <body>
@@ -76,6 +91,10 @@
       <button id="uMM" type="button">mm</button>
       <button id="btnReset" type="button">Reset view</button>
     </div>
+    <div class="row vizrow" id="vizrow">
+      <button id="vizMachine" class="active" type="button" title="Dedicated machine schematic">Machine</button>
+      <button id="vizWood" type="button" title="Wood / jig view">Wood</button>
+    </div>
     <div class="row" id="steps"></div>
     <div class="dims" id="dims"></div>
     <div class="machinesetup" id="machinesetup" aria-live="polite"></div>
@@ -86,14 +105,16 @@
       <span class="legend"><span style="background:#c48a4a"></span>strut</span>
       <span class="legend"><span style="background:#5b3a1e"></span>6.5° bevel</span>
       <span class="legend"><span style="background:#7dcea0"></span>jig</span>
-      <span class="legend"><span style="background:#6b8caf"></span>machine</span>
-      <span class="legend"><span style="background:#3d8bfd"></span>fence/stop</span><br>
+      <span class="legend"><span style="background:#f5c518"></span>DWE7492</span>
+      <span class="legend"><span style="background:#1a8f8a"></span>LS1019L</span>
+      <span class="legend"><span style="background:#f0a202"></span>stop</span><br>
       Panel shell: <a href="./assembly.html">assembly guide</a><br>
       Steps follow <a href="https://youtu.be/Sl9fEp-27EM" target="_blank" rel="noopener">this panel-build video</a>
       + Trillium plan dimensions (PDF p5 / cross-section p7).
       <span class="badge">Hex review</span>
     </div>
   </div>
+  <div id="machineHud" class="machine-hud" hidden aria-live="polite"></div>
 <script type="importmap">
 {
   "imports": {
@@ -273,7 +294,8 @@
       }
     ];
 
-    let step = 0;
+    const _qs = new URLSearchParams(location.search);
+    let step = Math.max(0, Math.min(STEPS.length - 1, parseInt(_qs.get('step') || '0', 10) || 0));
     let units = 'in'; // imperial primary for Hex review
 
     const canvas = document.getElementById('c');
@@ -423,20 +445,56 @@
       }
     }
 
+    // Brand colors — schematics must read as DWE7492 / LS1019L, not gray boxes
     const machineMat = new THREE.MeshStandardMaterial({ color: 0x6b8caf, roughness: 0.55, metalness: 0.25 });
+    const dewaltYellow = new THREE.MeshStandardMaterial({ color: 0xf5c518, roughness: 0.42, metalness: 0.12 });
+    const dewaltBlack = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.55, metalness: 0.22 });
+    const dewaltGray = new THREE.MeshStandardMaterial({ color: 0x5a6068, roughness: 0.45, metalness: 0.4 });
+    const makitaTeal = new THREE.MeshStandardMaterial({ color: 0x009b93, roughness: 0.4, metalness: 0.18 });
+    const makitaDark = new THREE.MeshStandardMaterial({ color: 0x1a2424, roughness: 0.55, metalness: 0.15 });
+    const makitaSilver = new THREE.MeshStandardMaterial({ color: 0xc5ced6, roughness: 0.32, metalness: 0.6 });
     const fenceMat = new THREE.MeshStandardMaterial({ color: 0x3d8bfd, roughness: 0.45, metalness: 0.15 });
-    const bladeMat = new THREE.MeshStandardMaterial({ color: 0xc0c8d4, roughness: 0.35, metalness: 0.6 });
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0xd0d6de, roughness: 0.3, metalness: 0.65 });
     const stopMat = new THREE.MeshStandardMaterial({ color: 0xf0a202, roughness: 0.55, metalness: 0.1 });
     const noneMat = new THREE.MeshStandardMaterial({ color: 0x3a4250, roughness: 0.8 });
+    const laserMat = new THREE.MeshStandardMaterial({
+      color: 0xff3355, roughness: 0.4, metalness: 0.1, emissive: 0xaa1122, emissiveIntensity: 0.45
+    });
+
+    let vizMode = 'machine';
+
+    function hasSawVisual(kind) {
+      return kind === 'tableRip' || kind === 'tableBevel' || kind === 'miterCrosscut'
+        || kind === 'miterSimple' || kind === 'miterCompound';
+    }
+
+    function setMachineHud(brand, title, lines) {
+      const el = document.getElementById('machineHud');
+      if (!brand) {
+        el.hidden = true;
+        el.innerHTML = '';
+        return;
+      }
+      el.hidden = false;
+      el.className = 'machine-hud ' + (brand === 'dewalt' ? 'dewalt' : 'makita');
+      const lis = (lines || []).map((l) => '<li>' + l + '</li>').join('');
+      el.innerHTML = '<div class="mh-brand">' + title + '</div>' + (lis ? '<ul>' + lis + '</ul>' : '');
+    }
 
     function arrowMesh(dir, color = 0x7dcea0) {
       const g = new THREE.Group();
-      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.22, 8), new THREE.MeshStandardMaterial({ color }));
+      const shaft = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.01, 0.01, 0.28, 8),
+        new THREE.MeshStandardMaterial({ color })
+      );
       shaft.rotation.z = -Math.PI / 2;
-      shaft.position.x = 0.11;
-      const head = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.05, 10), new THREE.MeshStandardMaterial({ color }));
+      shaft.position.x = 0.14;
+      const head = new THREE.Mesh(
+        new THREE.ConeGeometry(0.025, 0.06, 10),
+        new THREE.MeshStandardMaterial({ color })
+      );
       head.rotation.z = -Math.PI / 2;
-      head.position.x = 0.24;
+      head.position.x = 0.3;
       g.add(shaft, head);
       const d = dir.clone().normalize();
       const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), d);
@@ -444,91 +502,205 @@
       return g;
     }
 
-    /** Schematic DEWALT DWE7492 — fence, blade bevel, workpiece, cut direction */
+    /** DEWALT DWE7492 portable table saw — HUD callouts (no CSS2D pile) */
     function addTableSawSchematic({ bevelDeg = 0, fenceFaceMm, stockWmm, stockHmm, label }) {
       const g = new THREE.Group();
-      const table = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.04, 0.7), machineMat);
-      table.position.set(0, -0.02, 0);
+
+      [[-0.48, 0.28], [0.48, 0.28], [-0.48, -0.28], [0.48, -0.28]].forEach(([x, z]) => {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.5, 0.05), dewaltBlack);
+        leg.position.set(x, -0.28, z);
+        g.add(leg);
+      });
+      const axle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.0, 16), dewaltBlack);
+      axle.rotation.z = Math.PI / 2;
+      axle.position.set(0, -0.48, 0.28);
+      g.add(axle);
+      [-0.5, 0.5].forEach((x) => {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.04, 20), dewaltGray);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(x, -0.48, 0.28);
+        g.add(wheel);
+      });
+
+      const cabinet = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.32, 0.62), dewaltYellow);
+      cabinet.position.set(0, -0.1, 0);
+      g.add(cabinet);
+      const rim = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.045, 0.65), dewaltBlack);
+      rim.position.set(0, 0.05, 0);
+      g.add(rim);
+
+      const table = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.04, 0.78), dewaltBlack);
+      table.position.set(0, 0.08, 0);
       table.receiveShadow = true;
       g.add(table);
-      const insert = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.005, 0.28), noneMat);
-      insert.position.set(0, 0.002, 0);
-      g.add(insert);
-      const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.004, 48), bladeMat);
+
+      const throat = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.008, 0.36), dewaltGray);
+      throat.position.set(0, 0.102, 0);
+      g.add(throat);
+      const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.005, 48), bladeMat);
       blade.rotation.x = Math.PI / 2;
       blade.rotation.z = (bevelDeg * Math.PI) / 180;
-      blade.position.set(0, 0.08, 0);
+      blade.position.set(0, 0.14, 0);
       g.add(blade);
-      const bevelLabel = bevelDeg === 0
-        ? 'blade square 90°/0°'
-        : `blade bevel ${bevelDeg}° (EU ~${(90 - bevelDeg).toFixed(1)}°)`;
-      g.add(makeLabel(bevelLabel, new THREE.Vector3(0.28, 0.22, 0.05)));
+      const guard = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.12, 0.18), dewaltYellow);
+      guard.position.set(0.03, 0.2, -0.02);
+      guard.rotation.z = ((bevelDeg * Math.PI) / 180) * 0.5;
+      g.add(guard);
+
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.04, 0.055), dewaltYellow);
+      rail.position.set(0, 0.09, 0.42);
+      g.add(rail);
+      const rack = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.014, 0.02), dewaltBlack);
+      rack.position.set(0, 0.115, 0.42);
+      g.add(rack);
+
       const fenceX = fenceFaceMm / 1000;
-      const fence = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.16, 0.65), fenceMat);
-      fence.position.set(fenceX + 0.015, 0.08, 0);
+      const fence = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.74), dewaltBlack);
+      fence.position.set(fenceX + 0.02, 0.18, 0);
       g.add(fence);
-      g.add(makeLabel(`fence → ${fmt(fenceFaceMm)}`, new THREE.Vector3(fenceX + 0.12, 0.2, -0.25)));
+      const fenceFace = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.18, 0.72), dewaltYellow);
+      fenceFace.position.set(fenceX + 0.002, 0.18, 0);
+      g.add(fenceFace);
+      const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 16), dewaltYellow);
+      knob.rotation.x = Math.PI / 2;
+      knob.position.set(fenceX + 0.06, 0.12, 0.4);
+      g.add(knob);
+
       const w = stockWmm / 1000;
       const h = stockHmm / 1000;
-      const stock = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.85), woodMat);
-      stock.position.set(fenceX - w / 2, h / 2, 0.05);
+      const stock = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.9), woodMat);
+      stock.position.set(fenceX - w / 2, h / 2 + 0.1, 0.02);
       stock.castShadow = true;
       g.add(stock);
-      g.add(makeLabel(label || 'workpiece', new THREE.Vector3(fenceX - w / 2, h + 0.08, 0.35)));
       const arr = arrowMesh(new THREE.Vector3(0, 0, -1));
-      arr.position.set(fenceX - w / 2, h + 0.05, 0.45);
+      arr.position.set(fenceX - w / 2, h + 0.14, 0.5);
       g.add(arr);
-      g.add(makeLabel('cut / push', new THREE.Vector3(fenceX - w / 2 + 0.15, h + 0.12, 0.45)));
-      g.add(makeLabel('DWE7492', new THREE.Vector3(-0.4, 0.18, -0.28)));
+
+      setMachineHud('dewalt', 'DEWALT DWE7492', [
+        bevelDeg === 0 ? 'Blade square 90° / 0°' : 'Blade bevel ' + bevelDeg + '° (EU ~' + (90 - bevelDeg).toFixed(1) + '°)',
+        'Fence → ' + fmt(fenceFaceMm),
+        'Rack & pinion fence rail',
+        label || 'Workpiece on fence',
+        'Push / cut direction →'
+      ]);
+
+      g.scale.setScalar(1.25);
       group.add(g);
       return g;
     }
 
-    /** Schematic MAKITA LS1019L — miter, bevel, stop block, workpiece on fence */
+    /** MAKITA LS1019L sliding dual-bevel miter — HUD callouts (no CSS2D pile) */
     function addMiterSawSchematic({ miterDeg = 0, bevelDeg = 0, bevelSide = 'L', stop = true, label, compound = false }) {
       const g = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.35, 0.05, 48), machineMat);
-      base.position.y = -0.025;
-      g.add(base);
-      const fence = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.14, 0.025), fenceMat);
-      fence.position.set(0, 0.07, -0.12);
-      g.add(fence);
-      g.add(makeLabel('fence', new THREE.Vector3(0.28, 0.18, -0.12)));
+
+      const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 0.08, 40), makitaDark);
+      pedestal.position.y = -0.02;
+      g.add(pedestal);
+      const turntable = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.44, 0.055, 56), makitaTeal);
+      turntable.position.y = 0.03;
+      g.add(turntable);
+      const tick = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.008, 8, 64), makitaDark);
+      tick.rotation.x = Math.PI / 2;
+      tick.position.y = 0.06;
+      g.add(tick);
+
+      const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.03, 0.28), makitaSilver);
+      wingL.position.set(-0.4, 0.05, 0.04);
+      const wingR = wingL.clone();
+      wingR.position.x = 0.4;
+      g.add(wingL, wingR);
+      const kerf = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.01, 0.2), makitaDark);
+      kerf.position.set(0, 0.06, 0.05);
+      g.add(kerf);
+
+      const fenceBack = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.22, 0.035), makitaDark);
+      fenceBack.position.set(0, 0.18, -0.16);
+      g.add(fenceBack);
+      const fenceCap = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.03, 0.05), makitaTeal);
+      fenceCap.position.set(0, 0.3, -0.16);
+      g.add(fenceCap);
+
       const miterRad = (miterDeg * Math.PI) / 180;
       const arm = new THREE.Group();
       arm.rotation.y = -miterRad;
-      const armBar = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.35), machineMat);
-      armBar.position.set(0, 0.2, 0.05);
-      arm.add(armBar);
+
+      const railGeom = new THREE.CylinderGeometry(0.016, 0.016, 0.72, 14);
+      const rail1 = new THREE.Mesh(railGeom, makitaSilver);
+      rail1.rotation.x = Math.PI / 2;
+      rail1.position.set(-0.06, 0.36, -0.18);
+      const rail2 = rail1.clone();
+      rail2.position.x = 0.06;
+      arm.add(rail1, rail2);
+      [-0.06, 0.06].forEach((x) => {
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 12), makitaTeal);
+        cap.position.set(x, 0.36, -0.54);
+        arm.add(cap);
+      });
+
+      const carriage = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.12), makitaDark);
+      carriage.position.set(0, 0.36, 0.05);
+      arm.add(carriage);
+      const motor = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.26), makitaTeal);
+      motor.position.set(0, 0.42, 0.18);
+      arm.add(motor);
+      const motorRound = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.12, 24), makitaTeal);
+      motorRound.rotation.z = Math.PI / 2;
+      motorRound.position.set(0.12, 0.42, 0.18);
+      arm.add(motorRound);
+      const handle = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.016, 8, 20, Math.PI), makitaDark);
+      handle.rotation.z = Math.PI / 2;
+      handle.position.set(0, 0.54, 0.18);
+      arm.add(handle);
+
       const bladeG = new THREE.Group();
-      const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.004, 48), bladeMat);
+      const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.135, 0.005, 48), bladeMat);
       blade.rotation.x = Math.PI / 2;
       bladeG.add(blade);
+      const guard = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.15, 0.15, 0.045, 28, 1, false, 0, Math.PI * 1.2),
+        makitaTeal
+      );
+      guard.rotation.x = Math.PI / 2;
+      guard.position.set(0, 0.02, 0);
+      bladeG.add(guard);
+      const laser = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.003, 0.32), laserMat);
+      laser.position.set(0, -0.12, 0.02);
+      bladeG.add(laser);
+
       const bevelRad = (bevelDeg * Math.PI) / 180;
       bladeG.rotation.z = bevelSide === 'R' ? bevelRad : -bevelRad;
-      bladeG.position.set(0, 0.2, 0.18);
+      bladeG.position.set(0, 0.28, 0.28);
       arm.add(bladeG);
       g.add(arm);
-      const blank = new THREE.Mesh(new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 0.55), woodMat);
-      blank.position.set(0.08, STRUT_H / 2000, -0.05);
+
+      const blank = new THREE.Mesh(new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 0.62), woodMat);
+      blank.position.set(0.1, STRUT_H / 2000 + 0.06, 0);
       blank.castShadow = true;
       g.add(blank);
+
       if (stop) {
-        const sb = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.06), stopMat);
-        sb.position.set(-0.28, 0.04, -0.05);
+        const sb = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.1, 0.07), stopMat);
+        sb.position.set(-0.34, 0.11, 0);
         g.add(sb);
-        g.add(makeLabel('stop block', new THREE.Vector3(-0.28, 0.14, 0.05)));
       }
-      g.add(makeLabel(`miter ${miterDeg}°`, new THREE.Vector3(0.25, 0.32, 0.2)));
-      g.add(makeLabel(bevelDeg === 0 ? 'bevel 0°' : `bevel ${bevelDeg}° ${bevelSide}`, new THREE.Vector3(-0.25, 0.32, 0.2)));
-      if (compound) g.add(makeLabel('dual bevel L/R — no flip', new THREE.Vector3(0, 0.4, -0.2)));
-      g.add(makeLabel(label || 'LS1019L', new THREE.Vector3(0, 0.05, 0.35)));
-      g.add(makeLabel('work against fence', new THREE.Vector3(0.15, 0.12, 0.15)));
+
+      const hud = [
+        'Miter ' + miterDeg + '°',
+        bevelDeg === 0 ? 'Bevel 0° (simple)' : 'Bevel ' + bevelDeg + '° ' + bevelSide,
+      ];
+      if (compound) hud.push('Dual bevel L/R — no flip');
+      if (stop) hud.push('Stop block (orange)');
+      if (label) hud.push(label);
+      hud.push('Slide rails + laser · work against fence');
+      setMachineHud('makita', 'MAKITA LS1019L', hud);
+
+      g.scale.setScalar(1.3);
       group.add(g);
       return g;
     }
 
     function addNoMachineVisual(kind) {
+      setMachineHud(null);
       const g = new THREE.Group();
       if (kind === 'handLayout') {
         const ring = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.008, 8, 48), fenceMat);
@@ -583,9 +755,8 @@
       } else if (kind === 'miterCompound') {
         addMiterSawSchematic({
           miterDeg: HEX.apex, bevelDeg: BEVEL_DEG, bevelSide: 'L', stop: true, compound: true,
-          label: `compound ears ${HEX.apex}° + ${BEVEL_DEG}°`
+          label: `compound ears ${HEX.apex}° + ${BEVEL_DEG}° · RH = opposite tilt`
         });
-        group.add(makeLabel('RH bevel = opposite tilt (no flip)', new THREE.Vector3(0, 0.48, 0)));
       } else if (kind === 'handLayout' || kind === 'drill' || kind === 'none') {
         addNoMachineVisual(kind);
       }
@@ -594,16 +765,21 @@
     function rebuild() {
       group.clear();
       const view = STEPS[step].view;
+      const mv = STEPS[step].machineVisual;
+      const saw = hasSawVisual(mv);
+      const showWood = !saw || vizMode === 'wood';
+      const showMachine = !saw || vizMode === 'machine';
       const { pA, pB, pC, h, c } = hexPoints();
       const up = new THREE.Vector3(0, 1, 0);
+      if (!showMachine) setMachineHud(null);
 
-      if (view === 'blanks') {
+      if (showWood && view === 'blanks') {
         // Batch labels; LS1019L schematic shows crosscut + stop block
         group.add(makeLabel(`2×6 blank ~${fmt(BLANK_LEN)}`, new THREE.Vector3(-0.55, 0.35, 0)));
         group.add(makeLabel(`× ${HEX.qty * 3} strut blanks`, new THREE.Vector3(-0.55, 0.25, 0)));
       }
 
-      if (view === 'stock') {
+      if (showWood && view === 'stock') {
         if (step === 2) {
           // Optional finish — no saw; stained matched pairs
           [-0.15, 0.15].forEach((x, i) => {
@@ -619,7 +795,7 @@
         // step 1 rip: DWE7492 schematic carries fence / blade / push
       }
 
-      if (view === 'bevel') {
+      if (showWood && view === 'bevel') {
         // Template strut reference; DWE7492 schematic shows fence + ~83.5°/6.5°
         const finished = strutMesh(900, STRUT_W);
         finished.rotation.x = -Math.PI / 2;
@@ -634,7 +810,7 @@
         group.add(makeLabel(`template strut ${fmt(STRUT_H)}×${fmt(STRUT_W)}`, new THREE.Vector3(-0.65, 0.12, 0.4)));
       }
 
-      if (view === 'jig' || view === 'jigStops') {
+      if (showWood && (view === 'jig' || view === 'jigStops')) {
         addJig(pA, pB, pC, h, c, view === 'jigStops');
         if (view === 'jig') {
           group.add(makeLabel('arc ∩ = apex', pC.clone().add(new THREE.Vector3(0, 0.08, 0.05))));
@@ -646,7 +822,7 @@
         }
       }
 
-      if (view === 'miters') {
+      if (showWood && view === 'miters') {
         addJig(pA, pB, pC, h, c, false);
         const s1 = placeStrut(pA, pB, up);
         const s2 = placeStrut(pB, pC, up);
@@ -660,7 +836,7 @@
         group.add(makeLabel(`${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.06, 0.08, 0))));
       }
 
-      if (view === 'ears' || view === 'assemble' || view === 'done') {
+      if (showWood && (view === 'ears' || view === 'assemble' || view === 'done')) {
         addJig(pA, pB, pC, h, c, view !== 'ears');
         group.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
         group.add(makeLabel(`${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
@@ -682,19 +858,9 @@
         }
       }
 
-      // Machine setup schematic (syncs with step — written panel + 3D)
-      {
-        const mv = STEPS[step].machineVisual;
-        const keepJig = (view === 'jig' || view === 'jigStops' || view === 'miters' || view === 'ears' || view === 'assemble' || view === 'done');
-        const before = group.children.length;
+      // Dedicated Machine view — no side-by-side crowding with jig
+      if (showMachine) {
         addMachineVisual(mv);
-        if (keepJig && (mv === 'miterSimple' || mv === 'miterCompound' || mv === 'drill' || mv === 'none' || mv === 'handLayout')) {
-          const dx = (mv === 'miterSimple' || mv === 'miterCompound') ? 0.95 : 0.7;
-          for (let i = before; i < group.children.length; i++) {
-            group.children[i].position.x += dx;
-            group.children[i].position.z += 0.15;
-          }
-        }
       }
 
       const grid = new THREE.GridHelper(3, 12, 0x2a3140, 0x1a1e26);
@@ -755,15 +921,25 @@
     function sync() {
       document.getElementById('uIN').classList.toggle('active', units === 'in');
       document.getElementById('uMM').classList.toggle('active', units === 'mm');
+      const saw = hasSawVisual(STEPS[step].machineVisual);
+      document.getElementById('vizrow').classList.toggle('show', saw);
+      document.getElementById('vizMachine').classList.toggle('active', vizMode === 'machine');
+      document.getElementById('vizWood').classList.toggle('active', vizMode === 'wood');
       renderSteps();
       setDims();
       setMachineSetup();
       setCutList();
       rebuild();
+      if (saw && vizMode === 'machine') {
+        camera.position.set(1.8, 1.35, 2.4);
+        controls.target.set(0, 0.25, 0);
+      }
     }
 
     document.getElementById('uIN').onclick = () => { units = 'in'; sync(); };
     document.getElementById('uMM').onclick = () => { units = 'mm'; sync(); };
+    document.getElementById('vizMachine').onclick = () => { vizMode = 'machine'; sync(); };
+    document.getElementById('vizWood').onclick = () => { vizMode = 'wood'; sync(); };
     document.getElementById('btnReset').onclick = () => {
       camera.position.set(1.6, 1.2, 2.2);
       controls.target.set(0, 0.35, 0);
