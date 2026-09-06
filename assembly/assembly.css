@@ -45,3 +45,8 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
 .navrow { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
 .navrow .spacer { flex: 1; color: var(--muted); font-size: 12px; text-align: center; }
 .cutbox strong { color: var(--text); font-weight: 600; }
+
+.ring-nav { margin: 6px 0 2px; }
+.ring-label { color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+button.ring { font-size: 11px; padding: 4px 8px; }
+button.ring.active { background: #3a5a8a; border-color: var(--hex); }

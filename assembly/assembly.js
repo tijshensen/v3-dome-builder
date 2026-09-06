@@ -18,6 +18,7 @@ import {
   CHORD,
   BEVEL_DEG,
   PLAN_IN,
+  VIDEO_URL,
   loadPanelMap
 } from '../panel/panel-specs.js';
 
@@ -40,6 +41,8 @@ let panelMap = null;
 let edgeById = new Map();
 let faceById = new Map();
 let rings = [];
+/** Active ring index while on step 3 (Ring-by-ring). */
+let ringFocus = 0;
 let selectedId = null;
 
 const filters = { hex: true, pent: true, window: true, doorHalf: true };
@@ -102,6 +105,12 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
+/**
+ * Rings = BFS graph-distance from apex faces (doorHalf excluded).
+ * Apex faces = panels incident to the highest-Z vertex in the Z-up map
+ * (becomes +Y after zUpToYUp). Ring 0 = crown; higher rings grow outward.
+ * This is topology for DIY assembly order — not PDF exploded section numbers.
+ */
 function buildRings(faces, verts) {
   let apex = 0;
   let bestZ = -Infinity;
@@ -218,6 +227,7 @@ function buildShell(map) {
     map.faces.filter((f) => f.type !== 'doorHalf'),
     map.vertices
   );
+  ringFocus = Math.min(ringFocus, Math.max(rings.length - 1, 0));
 
   const box = new THREE.Box3().setFromObject(shellGroup);
   const size = box.getSize(new THREE.Vector3());
@@ -334,7 +344,11 @@ function countsText() {
     `Panels: hex x${hex} (incl. ${HEX.windows} windows) · pent x${pent} · doorHalf x${DOOR.qty}\n` +
     `Classic before doors: ${META.classicBeforeDoors.hex} hex + ${META.classicBeforeDoors.pent} pent\n` +
     `Map: ${faceMeshes.size} faces · ${panelMap?.vertices?.length ?? '?'} verts` +
-    (R ? ` · R~${fmtLen(Math.round(R))}` : '') +
+    (R
+      ? ` · map radius ≈${fmtLen(Math.round(R))} (generated topology scale — approximate; plan footprint is ${META.size}, not an exact PDF radius)`
+      : ` · plan footprint ${META.size}`) +
+    `\nBuild sequence (practice): crown → outward rings → door halves.` +
+    `\nWork using the Trillium PDF exploded view + component list for section counts and which panels belong together (face ids here ≠ PDF section numbers).` +
     `\nDoor parents: ${doorParents} (2 LH + 2 RH)\n` +
     `Windows (provisional ids): ${winIds}\n` +
     `Chords: ${CHORD.label.A}, ${CHORD.label.B}, ${CHORD.label.C}\n` +
@@ -353,10 +367,12 @@ const STEPS = [
     text: () => {
       const crown = rings[0] || [];
       return (
-        `Start at the crown (highest Z in map -> +Y after conversion).\n` +
+        `Build sequence: crown → outward → door halves (build practice).\n` +
+        `Start at the crown (highest Z in map → +Y after conversion).\n` +
         `Ring 0: ${crown.length} pent panels at the apex.\n` +
         `Ids: ${crown.join(', ') || '(none)'}\n` +
-        `Place these first; they set orientation for lower rings.`
+        `Place these first; they set orientation for lower rings.\n` +
+        `Use the PDF exploded view / component list to confirm which crown panels belong together.`
       );
     },
     focusIds: () => new Set(rings[0] || [])
@@ -364,27 +380,49 @@ const STEPS = [
   {
     title: '3. Ring-by-ring',
     text: () => {
-      const lines = rings.map((ids, i) => {
-        let h = 0;
-        let p = 0;
-        let w = 0;
-        for (const id of ids) {
+      const i = Math.min(Math.max(ringFocus, 0), Math.max(rings.length - 1, 0));
+      const ids = rings[i] || [];
+      let h = 0;
+      let p = 0;
+      let w = 0;
+      for (const id of ids) {
+        const f = faceById.get(id);
+        if (!f) continue;
+        if (f.window) w++;
+        else if (f.type === 'hex') h++;
+        else if (f.type === 'pent') p++;
+      }
+      const summary = rings.map((row, ri) => {
+        let hh = 0;
+        let pp = 0;
+        let ww = 0;
+        for (const id of row) {
           const f = faceById.get(id);
           if (!f) continue;
-          if (f.window) w++;
-          else if (f.type === 'hex') h++;
-          else if (f.type === 'pent') p++;
+          if (f.window) ww++;
+          else if (f.type === 'hex') hh++;
+          else if (f.type === 'pent') pp++;
         }
-        return `  Ring ${i}: ${ids.length}  (hex ${h}, pent ${p}, window ${w})`;
+        const mark = ri === i ? ' ←' : '';
+        return `  Ring ${ri}: ${row.length}  (hex ${hh}, pent ${pp}, window ${ww})${mark}`;
       });
       return (
-        `Grow outward using shared edges / neighbors.\n` +
+        `Grow outward: crown → rings → door halves.\n` +
+        `Rings = BFS distance from apex faces (topology; doorHalf excluded).\n` +
+        `Focus Ring ${i}: ${ids.length} panels (hex ${h}, pent ${p}, window ${w}).\n` +
+        `Ids: ${ids.join(', ') || '(none)'}\n` +
         `Match chord labels on shared edges (A/B/C from specs).\n` +
-        lines.join('\n') +
-        `\nTip: click a face for neighbor ids and edge chords.`
+        `Each join: clamp shared edges flush (bevels out), predrill if needed, screw; check gaps before the next ring.\n` +
+        `Work using the PDF exploded view for section counts / which panels belong together.\n` +
+        `All rings:\n` +
+        summary.join('\n') +
+        `\nTip: use Ring 0…N buttons (or Prev/Next) to highlight one ring; click a face for neighbors.`
       );
     },
-    focusIds: () => null
+    focusIds: () => {
+      const i = Math.min(Math.max(ringFocus, 0), Math.max(rings.length - 1, 0));
+      return new Set(rings[i] || []);
+    }
   },
   {
     title: '4. Door halves',
@@ -400,11 +438,13 @@ const STEPS = [
         return `  ${f.id} ${f.mirror || '?'} parent ${f.parentHexId || '?'} · ${edges.join(', ')}`;
       });
       return (
+        `Last in sequence: door halves after crown and outward rings.\n` +
         `Install door halves (2 LH + 2 RH).\n` +
         `Specs: a=${fmtLen(DOOR.a)}, b=${fmtLen(DOOR.b)}, base ${fmtLen(DOOR.c)}.\n` +
         `Parents: ${parents}.\n` +
         lines.join('\n') +
-        `\nMatch LH/RH to mirror; join on shared B-base with neighbors.`
+        `\nMatch LH/RH to mirror; join on shared B-base with neighbors.\n` +
+        `Confirm pairs against the PDF exploded view / component list before fastening.`
       );
     },
     focusIds: () =>
@@ -424,7 +464,8 @@ const STEPS = [
         `Window hex panels — provisional map ids (PDF section labels not mapped):\n` +
         `  ${ids.join(', ')}\n` +
         `Same Hex frame dims (${fmtLen(HEX.a)} / ${fmtLen(HEX.b)} / base ${fmtLen(HEX.c)}).\n` +
-        `Treat as hex in the ring sequence; mark for glazing later.`
+        `Treat as hex in the ring sequence; mark for glazing later.\n` +
+        `Cross-check window locations on the PDF exploded view when section labels are available.`
       );
     },
     focusIds: () => {
@@ -437,12 +478,14 @@ const STEPS = [
   {
     title: '6. Fit-check',
     text: () =>
-      `Fit-check (assembly, not fabrication):\n` +
+      `Fit-check (assembly, not fabrication) — DIY fastening each join:\n` +
       `· Bevels face outward (${BEVEL_DEG} deg from Hex shop).\n` +
-      `· Join panels on shared edges — chord letters must match.\n` +
+      `· Clamp shared edges flush before fastening; bevels out.\n` +
+      `· Predrill if needed, then screw; do not force a gap closed.\n` +
+      `· Check gaps / chord match before starting the next ring (from build video).\n` +
       `· Door halves: confirm LH/RH and parent openings before locking base.\n` +
-      `· Fastening: high-level only — clamp, check gaps, then fasteners.\n` +
-      `· Re-check crown symmetry before locking lower rings.`
+      `· Re-check crown symmetry before locking lower rings.\n` +
+      `Build video: ${VIDEO_URL}`
   }
 ];
 
@@ -456,16 +499,58 @@ function renderSteps() {
     b.textContent = s.title;
     b.addEventListener('click', () => {
       step = i;
+      if (step === 2) ringFocus = Math.min(ringFocus, Math.max(rings.length - 1, 0));
       syncStep();
     });
     host.appendChild(b);
   });
 }
 
+function renderRingNav() {
+  const host = document.getElementById('ringNav');
+  if (!host) return;
+  host.innerHTML = '';
+  const ringStep = step === 2;
+  host.hidden = !ringStep;
+  if (!ringStep) return;
+
+  const label = document.createElement('div');
+  label.className = 'ring-label';
+  label.textContent =
+    'Ring focus (BFS from apex) — dim others & list face ids:';
+  host.appendChild(label);
+
+  const row = document.createElement('div');
+  row.className = 'row';
+  rings.forEach((_, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ring' + (i === ringFocus ? ' active' : '');
+    b.textContent = `Ring ${i}`;
+    b.addEventListener('click', () => {
+      ringFocus = i;
+      syncStep();
+    });
+    row.appendChild(b);
+  });
+  host.appendChild(row);
+}
+
 function syncStep() {
-  document.getElementById('stepLabel').textContent = `${step + 1} / ${STEPS.length}`;
+  if (rings.length) {
+    ringFocus = Math.min(Math.max(ringFocus, 0), rings.length - 1);
+  } else {
+    ringFocus = 0;
+  }
+  const onRing = step === 2;
+  const label = onRing
+    ? `${step + 1} / ${STEPS.length} · Ring ${ringFocus + 1}/${Math.max(rings.length, 1)}`
+    : `${step + 1} / ${STEPS.length}`;
+  document.getElementById('stepLabel').textContent = label;
   document.getElementById('stepBody').textContent = STEPS[step].text();
   renderSteps();
+  renderRingNav();
+  // Prev/Next also walk rings while on step 3 (without leaving the step).
   document.getElementById('btnPrev').disabled = step === 0;
   document.getElementById('btnNext').disabled = step === STEPS.length - 1;
   setHighlight(selectedId);
@@ -494,14 +579,26 @@ document.getElementById('uMM').addEventListener('click', () => {
 });
 document.getElementById('btnReset').addEventListener('click', resetView);
 document.getElementById('btnPrev').addEventListener('click', () => {
+  if (step === 2 && ringFocus > 0) {
+    ringFocus--;
+    syncStep();
+    return;
+  }
   if (step > 0) {
     step--;
+    if (step === 2) ringFocus = Math.max(rings.length - 1, 0);
     syncStep();
   }
 });
 document.getElementById('btnNext').addEventListener('click', () => {
+  if (step === 2 && ringFocus < rings.length - 1) {
+    ringFocus++;
+    syncStep();
+    return;
+  }
   if (step < STEPS.length - 1) {
     step++;
+    if (step === 2) ringFocus = 0;
     syncStep();
   }
 });

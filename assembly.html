@@ -30,6 +30,7 @@
       <span class="spacer" id="stepLabel">1 / 6</span>
       <button id="btnNext" type="button">Next →</button>
     </div>
+    <div id="ringNav" class="ring-nav" hidden></div>
     <div class="dims" id="stepBody"></div>
     <h2>Selected panel</h2>
     <div class="cutbox" id="detail">Click a face for id, type, neighbors, edge chords.</div>
@@ -40,6 +41,8 @@
       <span class="legend"><span style="background:#7dcea0"></span>window</span>
       <span class="legend"><span style="background:#c45c8a"></span>doorHalf</span><br>
       Map is Z-up → display converts to Three.js Y-up (<code>(x,y,z)→(x,z,−y)</code>).<br>
+      Sequence: crown → outward rings → door halves. Work using PDF exploded view / component list.<br>
+      Rings = BFS distance from apex faces (topology). Map radius is approximate generated scale vs plan 18′ footprint.<br>
       Window face ids are provisional (PDF section labels not mapped).<br>
       <a href="./index.html">Hex shop (fabrication)</a>
     </div>
