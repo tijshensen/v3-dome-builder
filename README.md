@@ -13,6 +13,21 @@ Interactive Three.js shop guide for **Hex ×73** panel frames (Trillium 18′ 5/
 
 Steps follow [this video](https://youtu.be/Sl9fEp-27EM) + Trillium plan numbers. Pent/Door paused until Hex review.
 
+## Site layout (Website `/build/`)
+
+Repo root mirrors Website `/build/` — copy folders 1:1 (no rewrite hacks):
+
+```
+index.html          # hub → hex / assembly / deck
+hex/index.html      # Hex fabrication guide
+assembly/index.html # Panel shell assembly
+deck/index.html     # 20′ wood deck guide
+panel/              # shared panel-specs + map
+vendor/three/       # offline Three.js for hex + deck
+```
+
+All guide asset and cross-links use **relative** paths (`../vendor/`, `../panel/`, `../hex/`, etc.).
+
 ## How to run
 
 ES modules need a local server:
@@ -44,7 +59,7 @@ const map = await loadPanelMap(); // or fetch(PANEL_MAP_URL)
 
 - Face map: Class I frequency-3 geodesic, Z-up, 5/8 truncate (`centroid_z >= -0.25·R`), scaled so B≈1130 mm. Classic 75 hex + 30 pent → after door cuts **73 hex + 30 pent + 4 doorHalf**. Window IDs are heuristic; PDF section labels not mapped.
 - Regenerate map: `python3 scripts/generate_panel_map.py`
-- Hex shop guide (`index.html`) imports specs only — fabrication UX frozen.
+- Hex shop guide (`hex/index.html`) imports specs only — fabrication UX frozen.
 
 
 ## Assembly guide (Milestone 1)
@@ -55,11 +70,11 @@ Interactive **full panel-shell** viewer (hex + pent + doorHalf + windows). Separ
 npx serve .
 ```
 
-Open [`assembly.html`](assembly.html).
+Open [`assembly/`](assembly/) (or `assembly/index.html`).
 
 | Path | Purpose |
 |------|---------|
-| [`assembly.html`](assembly.html) | Assembly UI shell |
+| [`assembly/index.html`](assembly/index.html) | Assembly UI shell |
 | [`assembly/assembly.js`](assembly/assembly.js) | Three.js viewer + sequence |
 | [`assembly/assembly.css`](assembly/assembly.css) | Dark shop styles |
 
@@ -68,7 +83,7 @@ Open [`assembly.html`](assembly.html).
 - **doorHalf** LH/RH placed from TPM-approved map edges (DOOR a/b/c).
 - Window face ids are **provisional** (PDF section labels not mapped).
 - Sequence: overview -> apex/crown -> ring-by-ring -> door halves -> windows -> fit-check.
-- Hex shop fabrication steps remain in [`index.html`](index.html).
+- Hex shop fabrication steps remain in [`hex/index.html`](hex/index.html).
 
 
 
@@ -80,7 +95,7 @@ Interactive **20′ Trillium wood deck** shop guide for the **18′ 5/8 3v** dom
 npx serve .
 ```
 
-Open [`deck/index.html`](deck/index.html) (or `/deck/?step=0`).
+Open [`deck/`](deck/) (or `deck/index.html?step=0`).
 
 | Path | Purpose |
 |------|---------|
@@ -93,7 +108,7 @@ Open [`deck/index.html`](deck/index.html) (or `/deck/?step=0`).
 - Cuts: joists (square); rim / outer+inner blocks @ 12° L-L; outer girders @ 18° L-L; inner girders @ 30° L-L
 - Machines (written setup; visual polish deferred): **MAKITA LS1019L** primary for angled/cross cuts; circular saw OK for square joists; DEWALT DWE7492 optional
 - Source: Trillium Dome & Yurt Wood Deck PDF (personal use) — do **not** commit the PDF into this repo
-- Hex fab (`index.html`) and assembly remain separate
+- Hex fab (`hex/`), assembly (`assembly/`), and deck (`deck/`) are sibling folders under the repo root (same shape as `/build/`). Root [`index.html`](index.html) is a short hub.
 
 ## Follow-ups
 
