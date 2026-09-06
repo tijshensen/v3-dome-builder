@@ -33,14 +33,17 @@
       "z_cut_factor": -0.25
     },
     "doorAssignment": {
-      "method": "Two adjacent lowest-Z hex faces removed and replaced by 4 doorHalf faces (2 LH + 2 RH) with parentHexId. Physical dims from panel-specs.js doorHalf().",
+      "method": "Two adjacent lowest-Z hex faces removed and replaced by 4 doorHalf faces (LH+RH per parent). Each doorHalf gets physical edges a/b/c from panel-specs doorHalf(mirror): LH 986/577/1130, RH 577/986/1130 (mm), miters 1.4/59.3/29.3 (RH swaps baseL/baseR). Placement: shared parent B-base (1130) with lowered apex inside the hex (PDF partial-hex cut) \u2014 not a full A-A-B triangle. LH and RH on the same parent do not reuse the same three hex edges.",
+      "edgeOrder": "faces[].edges = [a, b, c] matching doorDims_mm / doorHalf()",
       "parentHexIds": [
         "f81",
         "f84"
       ]
     },
     "windowAssignment": {
-      "method": "Heuristic: 4 hex faces in mid-upper latitude band at ~90\u00b0 azimuth spacing. PDF/TPM window section labels are NOT mapped yet.",
+      "method": "PROVISIONAL until PDF section map. Heuristic: 4 hex faces in mid-upper latitude band at ~90\u00b0 azimuth spacing. PDF/TPM window section labels are NOT mapped yet.",
+      "provisional": true,
+      "note": "provisional until PDF section map",
       "faceIds": [
         "f67",
         "f49",
@@ -49,9 +52,11 @@
       ]
     },
     "notes": [
-      "Face ids (f0\u2026) are generated indices \u2014 PDF exploded-view section numbers are not mapped.",
+      "Face ids (f0\u2026) are generated indices \u2014 PDF exploded-view section numbers are NOT mapped. Assembler: face ids \u2260 PDF exploded numbers.",
+      "Window face IDs are provisional until PDF section map.",
       "Classic 3v 5/8 \u2248 75 hex + 30 pent; Trillium lists 73 hex after door cuts (75\u22122=73) + 4 door halves.",
       "Assembler must import dims from ./panel-specs.js \u2014 do not copy edge lengths from this file alone.",
+      "doorHalf edges are physical DOOR lengths (986/577/1130 mm, mirrored), not parent hex A-A-B (1155/1155/1130).",
       "Pre-door classification: hex=75 pent=30 other=0."
     ]
   },
@@ -360,6 +365,26 @@
       2225.1605,
       1616.6738,
       525.2891
+    ],
+    [
+      573.452,
+      2679.2339,
+      -21.8892
+    ],
+    [
+      276.0338,
+      2679.2339,
+      -503.1219
+    ],
+    [
+      1351.4981,
+      2329.7944,
+      -503.1219
+    ],
+    [
+      1110.8817,
+      2504.6124,
+      -21.8892
     ]
   ],
   "edges": [
@@ -1847,6 +1872,142 @@
       ],
       "length_mm": 1155.0,
       "chord": "A"
+    },
+    {
+      "id": "e165",
+      "v": [
+        50,
+        61
+      ],
+      "length_mm": 986.0,
+      "chord": "DOOR_a",
+      "role": "a",
+      "doorHalf": true
+    },
+    {
+      "id": "e166",
+      "v": [
+        61,
+        49
+      ],
+      "length_mm": 577.0,
+      "chord": "DOOR_b",
+      "role": "b",
+      "doorHalf": true
+    },
+    {
+      "id": "e167",
+      "v": [
+        50,
+        49
+      ],
+      "length_mm": 1130.0,
+      "chord": "B",
+      "role": "c",
+      "doorHalf": true,
+      "sharedWithParentEdge": "e144"
+    },
+    {
+      "id": "e168",
+      "v": [
+        50,
+        62
+      ],
+      "length_mm": 577.0,
+      "chord": "DOOR_a",
+      "role": "a",
+      "doorHalf": true
+    },
+    {
+      "id": "e169",
+      "v": [
+        62,
+        49
+      ],
+      "length_mm": 986.0,
+      "chord": "DOOR_b",
+      "role": "b",
+      "doorHalf": true
+    },
+    {
+      "id": "e170",
+      "v": [
+        50,
+        49
+      ],
+      "length_mm": 1130.0,
+      "chord": "B",
+      "role": "c",
+      "doorHalf": true,
+      "sharedWithParentEdge": "e144"
+    },
+    {
+      "id": "e171",
+      "v": [
+        52,
+        63
+      ],
+      "length_mm": 986.0,
+      "chord": "DOOR_a",
+      "role": "a",
+      "doorHalf": true
+    },
+    {
+      "id": "e172",
+      "v": [
+        63,
+        53
+      ],
+      "length_mm": 577.0,
+      "chord": "DOOR_b",
+      "role": "b",
+      "doorHalf": true
+    },
+    {
+      "id": "e173",
+      "v": [
+        52,
+        53
+      ],
+      "length_mm": 1130.0,
+      "chord": "B",
+      "role": "c",
+      "doorHalf": true,
+      "sharedWithParentEdge": "e150"
+    },
+    {
+      "id": "e174",
+      "v": [
+        52,
+        64
+      ],
+      "length_mm": 577.0,
+      "chord": "DOOR_a",
+      "role": "a",
+      "doorHalf": true
+    },
+    {
+      "id": "e175",
+      "v": [
+        64,
+        53
+      ],
+      "length_mm": 986.0,
+      "chord": "DOOR_b",
+      "role": "b",
+      "doorHalf": true
+    },
+    {
+      "id": "e176",
+      "v": [
+        52,
+        53
+      ],
+      "length_mm": 1130.0,
+      "chord": "B",
+      "role": "c",
+      "doorHalf": true,
+      "sharedWithParentEdge": "e150"
     }
   ],
   "faces": [
@@ -4950,26 +5111,30 @@
       "mirror": "LH",
       "vertices": [
         50,
-        49,
-        51
+        61,
+        49
       ],
       "edges": [
-        "e144",
-        "e145",
-        "e147"
+        "e165",
+        "e166",
+        "e167"
       ],
       "neighbors": [
         {
-          "edge": "e144",
-          "face": "f80"
+          "edge": "e165",
+          "face": null,
+          "opening": "doorCut"
         },
         {
-          "edge": "e145",
-          "face": "f82"
+          "edge": "e166",
+          "face": null,
+          "opening": "doorCut"
         },
         {
-          "edge": "e147",
-          "face": null
+          "edge": "e167",
+          "face": "f80",
+          "viaParentHex": "f81",
+          "sharedWithParentEdge": "e144"
         }
       ],
       "window": false,
@@ -4981,7 +5146,12 @@
         "apex": 1.4,
         "baseL": 59.3,
         "baseR": 29.3
-      }
+      },
+      "edgeOrder": [
+        "a",
+        "b",
+        "c"
+      ]
     },
     {
       "id": "f106",
@@ -4989,65 +5159,78 @@
       "mirror": "RH",
       "vertices": [
         50,
-        49,
-        51
+        62,
+        49
       ],
       "edges": [
-        "e144",
-        "e145",
-        "e147"
+        "e168",
+        "e169",
+        "e170"
       ],
       "neighbors": [
         {
-          "edge": "e144",
-          "face": "f80"
+          "edge": "e168",
+          "face": null,
+          "opening": "doorCut"
         },
         {
-          "edge": "e145",
-          "face": "f82"
+          "edge": "e169",
+          "face": null,
+          "opening": "doorCut"
         },
         {
-          "edge": "e147",
-          "face": null
+          "edge": "e170",
+          "face": "f80",
+          "viaParentHex": "f81",
+          "sharedWithParentEdge": "e144"
         }
       ],
       "window": false,
       "parentHexId": "f81",
       "doorDims_mm": {
-        "a": 986.0,
-        "b": 577.0,
+        "a": 577.0,
+        "b": 986.0,
         "c": 1130.0,
         "apex": 1.4,
-        "baseL": 59.3,
-        "baseR": 29.3
-      }
+        "baseL": 29.3,
+        "baseR": 59.3
+      },
+      "edgeOrder": [
+        "a",
+        "b",
+        "c"
+      ]
     },
     {
       "id": "f107",
       "type": "doorHalf",
       "mirror": "LH",
       "vertices": [
-        51,
         52,
+        63,
         53
       ],
       "edges": [
-        "e148",
-        "e150",
-        "e149"
+        "e171",
+        "e172",
+        "e173"
       ],
       "neighbors": [
         {
-          "edge": "e148",
-          "face": "f82"
+          "edge": "e171",
+          "face": null,
+          "opening": "doorCut"
         },
         {
-          "edge": "e150",
-          "face": "f102"
+          "edge": "e172",
+          "face": null,
+          "opening": "doorCut"
         },
         {
-          "edge": "e149",
-          "face": null
+          "edge": "e173",
+          "face": "f102",
+          "viaParentHex": "f84",
+          "sharedWithParentEdge": "e150"
         }
       ],
       "window": false,
@@ -5059,46 +5242,60 @@
         "apex": 1.4,
         "baseL": 59.3,
         "baseR": 29.3
-      }
+      },
+      "edgeOrder": [
+        "a",
+        "b",
+        "c"
+      ]
     },
     {
       "id": "f108",
       "type": "doorHalf",
       "mirror": "RH",
       "vertices": [
-        51,
         52,
+        64,
         53
       ],
       "edges": [
-        "e148",
-        "e150",
-        "e149"
+        "e174",
+        "e175",
+        "e176"
       ],
       "neighbors": [
         {
-          "edge": "e148",
-          "face": "f82"
+          "edge": "e174",
+          "face": null,
+          "opening": "doorCut"
         },
         {
-          "edge": "e150",
-          "face": "f102"
+          "edge": "e175",
+          "face": null,
+          "opening": "doorCut"
         },
         {
-          "edge": "e149",
-          "face": null
+          "edge": "e176",
+          "face": "f102",
+          "viaParentHex": "f84",
+          "sharedWithParentEdge": "e150"
         }
       ],
       "window": false,
       "parentHexId": "f84",
       "doorDims_mm": {
-        "a": 986.0,
-        "b": 577.0,
+        "a": 577.0,
+        "b": 986.0,
         "c": 1130.0,
         "apex": 1.4,
-        "baseL": 59.3,
-        "baseR": 29.3
-      }
+        "baseL": 29.3,
+        "baseR": 59.3
+      },
+      "edgeOrder": [
+        "a",
+        "b",
+        "c"
+      ]
     }
   ]
 }

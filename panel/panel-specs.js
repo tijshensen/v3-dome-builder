@@ -66,6 +66,7 @@ export const HEX = Object.freeze({
 /**
  * Pent ×30 — geometry only (shop polish paused).
  * Edges a=b=976 mm, c=1130 mm; apex 19.3° bases 35.4°.
+ * Locked imperial from Trillium PDF p5 (same pattern as HEX).
  */
 export const PENT = Object.freeze({
   name: 'Pent',
@@ -74,6 +75,9 @@ export const PENT = Object.freeze({
   a: 976,
   b: 976,
   c: 1130,
+  aIn: "3'-2 7/16\"",
+  bIn: "3'-2 7/16\"",
+  cIn: "3'-8 1/2\"", // HEX.cIn / PDF base
   apex: 19.3,
   base: 35.4,
   chord: 'C-C-B',
@@ -81,8 +85,9 @@ export const PENT = Object.freeze({
 });
 
 /**
- * Door half prototype from Trillium PDF.
+ * Door half from Trillium PDF p6 — Special Door Panels (2 mirrored pairs, partial hex).
  * Need 2 LH + 2 RH (mirrored). Use doorHalf('LH'|'RH') or DOOR_LH / DOOR_RH.
+ * Locked imperial from PDF; miters numeric (off 90°).
  */
 export const DOOR = Object.freeze({
   name: 'Door half',
@@ -93,6 +98,9 @@ export const DOOR = Object.freeze({
   a: 986,
   b: 577,
   c: 1130,
+  aIn: "3'-2 13/16\"",
+  bIn: "1'-10 3/4\"",
+  cIn: "3'-8 1/2\"", // HEX.cIn / PDF base
   apex: 1.4,
   baseL: 59.3,
   baseR: 29.3,
@@ -101,7 +109,7 @@ export const DOOR = Object.freeze({
 
 /**
  * @param {DoorMirror} side
- * @returns {typeof DOOR & { mirror: DoorMirror, a: number, b: number, baseL: number, baseR: number }}
+ * @returns {typeof DOOR & { mirror: DoorMirror, a: number, b: number, aIn: string, bIn: string, baseL: number, baseR: number }}
  */
 export function doorHalf(side) {
   if (side !== 'LH' && side !== 'RH') {
@@ -113,16 +121,20 @@ export function doorHalf(side) {
       mirror: 'LH',
       a: DOOR.a,
       b: DOOR.b,
+      aIn: DOOR.aIn,
+      bIn: DOOR.bIn,
       baseL: DOOR.baseL,
       baseR: DOOR.baseR
     });
   }
-  // RH: mirror swaps unequal sides and base miters
+  // RH: mirror swaps unequal sides, imperial labels, and base miters
   return Object.freeze({
     ...DOOR,
     mirror: 'RH',
     a: DOOR.b,
     b: DOOR.a,
+    aIn: DOOR.bIn,
+    bIn: DOOR.aIn,
     baseL: DOOR.baseR,
     baseR: DOOR.baseL
   });
@@ -136,6 +148,12 @@ export const PLAN_IN = new Map([
   [HEX.a, HEX.aIn],
   [HEX.b, HEX.bIn],
   [HEX.c, HEX.cIn],
+  [PENT.a, PENT.aIn],
+  [PENT.b, PENT.bIn],
+  [PENT.c, PENT.cIn],
+  [DOOR.a, DOOR.aIn],
+  [DOOR.b, DOOR.bIn],
+  [DOOR.c, DOOR.cIn],
   [STRUT_H, STRUT_H_IN],
   [STOCK_W, STOCK_W_IN],
   [STRUT_W, STRUT_W_IN],
@@ -146,7 +164,7 @@ export const META = Object.freeze({
   dome: 'Trillium 5/8 3v',
   size: "18'",
   units: 'mm',
-  source: 'Trillium PDF p5 / cross-section p7; Hex wood frames approved e042744; Pent/Door from prototype',
+  source: 'Trillium PDF p5–p6 / cross-section p7; Hex wood frames approved e042744; Pent/Door PLAN_IN from PDF',
   counts: { hex: HEX.qty, pent: PENT.qty, doorHalf: DOOR.qty },
   classicBeforeDoors: { hex: 75, pent: 30 }
 });

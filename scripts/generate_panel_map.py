@@ -11,9 +11,10 @@ Convention:
   - Classify faces by sorted edge lengths → hex (A-A-B) / pent (C-C-B)
   - Replace 2 base-row hex faces with 4 doorHalf faces (2 LH + 2 RH)
   - Mark 4 hex as windows (heuristic azimuth spread);
-    PDF/TPM window IDs not mapped — see meta.notes
+    window IDs provisional until PDF section map — see meta.windowAssignment
+  - Door halves: physical a/b/c from DOOR specs with LH/RH mirror; partial-hex placement
 
-PDF section labels are NOT mapped; face ids are generated (f0, f1, ...).
+PDF exploded-view section numbers are NOT mapped; face ids are generated (f0, f1, ...).
 """
 from __future__ import annotations
 
@@ -361,27 +362,188 @@ def pick_windows(faces_meta, verts, door_ids, n=4):
     return picked
 
 
-def replace_doors(faces_meta, door_a, door_b):
+def _vsub(a, b):
+    return [a[i] - b[i] for i in range(3)]
+
+
+def _vadd(a, b):
+    return [a[i] + b[i] for i in range(3)]
+
+
+def _smul(s, v):
+    return [s * v[i] for i in range(3)]
+
+
+def _dot(a, b):
+    return sum(a[i] * b[i] for i in range(3))
+
+
+def door_half_dims(mirror: str):
+    """Physical a/b/c + miters matching panel-specs doorHalf(mirror)."""
+    if mirror == "LH":
+        return {
+            "a": DOOR["a"],
+            "b": DOOR["b"],
+            "c": DOOR["c"],
+            "apex": DOOR["apex"],
+            "baseL": DOOR["baseL"],
+            "baseR": DOOR["baseR"],
+        }
+    if mirror == "RH":
+        return {
+            "a": DOOR["b"],
+            "b": DOOR["a"],
+            "c": DOOR["c"],
+            "apex": DOOR["apex"],
+            "baseL": DOOR["baseR"],
+            "baseR": DOOR["baseL"],
+        }
+    raise ValueError(f"mirror must be LH|RH, got {mirror}")
+
+
+def parent_base_orientation(parent, edges_by_id):
+    """
+    Return (v_left, v_right, v_hex_apex, parent_b_edge_id).
+    Base is the hex B chord (1130). Left/right match face winding so the
+    hex apex lies to the left of left→right (CCW / outward).
+    """
+    edges_by_id = edges_by_id
+    b_eid = None
+    for eid in parent["edges"]:
+        if edges_by_id[eid]["chord"] == "B" and abs(edges_by_id[eid]["length_mm"] - B_MM) < 1:
+            b_eid = eid
+            break
+    if b_eid is None:
+        # fallback: longest non-A pair — pick edge with length B_MM
+        for eid in parent["edges"]:
+            if abs(edges_by_id[eid]["length_mm"] - B_MM) < 1:
+                b_eid = eid
+                break
+    if b_eid is None:
+        raise RuntimeError(f"parent {parent['id']} has no B edge")
+
+    b_vs = set(edges_by_id[b_eid]["v"])
+    i0, i1, i2 = parent["vertices"]
+    for a, b, c in ((i0, i1, i2), (i1, i2, i0), (i2, i0, i1)):
+        if set((a, b)) == b_vs:
+            return a, b, c, b_eid
+    raise RuntimeError(f"could not orient base for {parent['id']}")
+
+
+def place_door_apex(verts, v_left, v_right, v_hex_apex, len_left, len_right):
+    """
+    Third vertex of a door half in the parent face plane:
+    dist(left)=len_left, dist(right)=len_right, same side of base as hex apex.
+    Matches PDF partial-hex cut (lowered apex on shared B base) — not full A-A-B.
+    """
+    p0, p1, ph = verts[v_left], verts[v_right], verts[v_hex_apex]
+    e = _vsub(p1, p0)
+    base = math.sqrt(_dot(e, e))
+    e_hat = _smul(1.0 / base, e)
+    n = _norm(_cross(e, _vsub(ph, p0)))
+    perp = _cross(n, e_hat)
+    if _dot(perp, _vsub(ph, p0)) < 0:
+        perp = _smul(-1.0, perp)
+    x = (len_left ** 2 - len_right ** 2 + base ** 2) / (2.0 * base)
+    y2 = len_left ** 2 - x * x
+    y = math.sqrt(max(0.0, y2))
+    return _vadd(p0, _vadd(_smul(x, e_hat), _smul(y, perp)))
+
+
+def replace_doors(faces_meta, edges_out, verts, door_a, door_b):
+    """
+    Remove 2 parent hexes; emit 4 doorHalf faces (LH+RH per parent) with
+    physical edges a/b/c from DOOR specs (mirrored). Placement shares the
+    parent B base and places a lowered apex inside the hex (PDF partial hex).
+    """
+    edges_by_id = {e["id"]: e for e in edges_out}
     door_parents = []
     new_faces = [fm for fm in faces_meta if fm["id"] not in (door_a["id"], door_b["id"])]
     next_fi = max(int(fm["id"][1:]) for fm in faces_meta) + 1
+    next_ei = max(int(e["id"][1:]) for e in edges_out) + 1
+
+    # Neighbor across each parent's B edge (face on the other side of the door base)
+    parent_base_nbr = {}
+    for parent in (door_a, door_b):
+        _vl, _vr, _va, b_eid = parent_base_orientation(parent, edges_by_id)
+        nbr_face = None
+        for nbr in parent["neighbors"]:
+            if nbr["edge"] == b_eid:
+                nbr_face = nbr["face"]
+                break
+        parent_base_nbr[parent["id"]] = (b_eid, nbr_face)
+
     for parent in (door_a, door_b):
         door_parents.append(parent["id"])
+        v_left, v_right, v_hex_apex, parent_b_eid = parent_base_orientation(parent, edges_by_id)
+        base_nbr_face = parent_base_nbr[parent["id"]][1]
+
         for mirror in ("LH", "RH"):
+            dims = door_half_dims(mirror)
+            # LH: a=986 from left, b=577 from right; RH swaps (panel-specs doorHalf)
+            apex_pos = place_door_apex(
+                verts, v_left, v_right, v_hex_apex, dims["a"], dims["b"]
+            )
+            apex_idx = len(verts)
+            verts.append(apex_pos)
+
+            eid_a = f"e{next_ei}"; next_ei += 1
+            eid_b = f"e{next_ei}"; next_ei += 1
+            eid_c = f"e{next_ei}"; next_ei += 1
+
+            # Physical door edges — not the parent hex A-A-B trio
+            edge_a = {
+                "id": eid_a,
+                "v": [v_left, apex_idx],
+                "length_mm": dims["a"],
+                "chord": "DOOR_a",
+                "role": "a",
+                "doorHalf": True,
+            }
+            edge_b = {
+                "id": eid_b,
+                "v": [apex_idx, v_right],
+                "length_mm": dims["b"],
+                "chord": "DOOR_b",
+                "role": "b",
+                "doorHalf": True,
+            }
+            edge_c = {
+                "id": eid_c,
+                "v": [v_left, v_right],
+                "length_mm": dims["c"],
+                "chord": "B",
+                "role": "c",
+                "doorHalf": True,
+                "sharedWithParentEdge": parent_b_eid,
+            }
+            edges_out.extend([edge_a, edge_b, edge_c])
+            edges_by_id[eid_a] = edge_a
+            edges_by_id[eid_b] = edge_b
+            edges_by_id[eid_c] = edge_c
+
+            # Winding: left → apex → right (a, b, then c back along base right→left)
+            # Store edges in documented order [a, b, c]
             fm = {
                 "id": f"f{next_fi}",
                 "type": "doorHalf",
                 "mirror": mirror,
-                "vertices": list(parent["vertices"]),
-                "edges": list(parent["edges"]),
-                "neighbors": list(parent["neighbors"]),
+                "vertices": [v_left, apex_idx, v_right],
+                "edges": [eid_a, eid_b, eid_c],
+                "edgeOrder": ["a", "b", "c"],
+                "neighbors": [
+                    {"edge": eid_a, "face": None, "opening": "doorCut"},
+                    {"edge": eid_b, "face": None, "opening": "doorCut"},
+                    {
+                        "edge": eid_c,
+                        "face": base_nbr_face,
+                        "viaParentHex": parent["id"],
+                        "sharedWithParentEdge": parent_b_eid,
+                    },
+                ],
                 "window": False,
                 "parentHexId": parent["id"],
-                "chords": parent.get("chords"),
-                "doorDims_mm": {
-                    "a": DOOR["a"], "b": DOOR["b"], "c": DOOR["c"],
-                    "apex": DOOR["apex"], "baseL": DOOR["baseL"], "baseR": DOOR["baseR"],
-                },
+                "doorDims_mm": dims,
             }
             new_faces.append(fm)
             next_fi += 1
@@ -392,10 +554,11 @@ def replace_doors(faces_meta, door_a, door_b):
         if fm["type"] == "doorHalf":
             parent_to_doors[fm["parentHexId"]].append(fm["id"])
 
+    # Rewire neighbors that pointed at removed parent hexes → door halves on that parent
     for fm in new_faces:
         new_nbrs = []
         for nbr in fm["neighbors"]:
-            fid = nbr["face"]
+            fid = nbr.get("face")
             if fid in removed:
                 replacements = parent_to_doors.get(fid, [])
                 new_nbrs.append({
@@ -406,6 +569,7 @@ def replace_doors(faces_meta, door_a, door_b):
             else:
                 new_nbrs.append(nbr)
         fm["neighbors"] = new_nbrs
+
     return new_faces, door_parents
 
 
@@ -460,7 +624,7 @@ def main():
         if fm["id"] in window_ids:
             fm["window"] = True
 
-    faces_final, door_parents = replace_doors(faces_meta, door_a, door_b)
+    faces_final, door_parents = replace_doors(faces_meta, edges_out, sverts, door_a, door_b)
     sverts = compact_vertices(sverts, faces_final, edges_out)
 
     counts = {
@@ -485,6 +649,7 @@ def main():
         if fm["type"] == "doorHalf":
             out["parentHexId"] = fm["parentHexId"]
             out["doorDims_mm"] = fm["doorDims_mm"]
+            out["edgeOrder"] = fm.get("edgeOrder", ["a", "b", "c"])
         public_faces.append(out)
 
     public_verts = [[round(c, 4) for c in v] for v in sverts]
@@ -516,21 +681,30 @@ def main():
             "doorAssignment": {
                 "method": (
                     "Two adjacent lowest-Z hex faces removed and replaced by 4 doorHalf faces "
-                    "(2 LH + 2 RH) with parentHexId. Physical dims from panel-specs.js doorHalf()."
+                    "(LH+RH per parent). Each doorHalf gets physical edges a/b/c from panel-specs "
+                    "doorHalf(mirror): LH 986/577/1130, RH 577/986/1130 (mm), miters 1.4/59.3/29.3 "
+                    "(RH swaps baseL/baseR). Placement: shared parent B-base (1130) with lowered "
+                    "apex inside the hex (PDF partial-hex cut) — not a full A-A-B triangle. "
+                    "LH and RH on the same parent do not reuse the same three hex edges."
                 ),
+                "edgeOrder": "faces[].edges = [a, b, c] matching doorDims_mm / doorHalf()",
                 "parentHexIds": door_parents,
             },
             "windowAssignment": {
                 "method": (
-                    "Heuristic: 4 hex faces in mid-upper latitude band at ~90° azimuth spacing. "
-                    "PDF/TPM window section labels are NOT mapped yet."
+                    "PROVISIONAL until PDF section map. Heuristic: 4 hex faces in mid-upper "
+                    "latitude band at ~90° azimuth spacing. PDF/TPM window section labels are NOT mapped yet."
                 ),
+                "provisional": True,
+                "note": "provisional until PDF section map",
                 "faceIds": window_ids,
             },
             "notes": [
-                "Face ids (f0…) are generated indices — PDF exploded-view section numbers are not mapped.",
+                "Face ids (f0…) are generated indices — PDF exploded-view section numbers are NOT mapped. Assembler: face ids ≠ PDF exploded numbers.",
+                "Window face IDs are provisional until PDF section map.",
                 "Classic 3v 5/8 ≈ 75 hex + 30 pent; Trillium lists 73 hex after door cuts (75−2=73) + 4 door halves.",
                 "Assembler must import dims from ./panel-specs.js — do not copy edge lengths from this file alone.",
+                "doorHalf edges are physical DOOR lengths (986/577/1130 mm, mirrored), not parent hex A-A-B (1155/1155/1130).",
                 f"Pre-door classification: hex={hex_n} pent={pent_n} other={other_n}.",
             ],
         },
