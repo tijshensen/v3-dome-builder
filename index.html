@@ -49,6 +49,17 @@
     .navrow { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
     .navrow .spacer { flex: 1; color: var(--muted); font-size: 12px; text-align: center; }
     .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: #2a3140; color: var(--muted); margin-left: 4px; }
+    .machinesetup {
+      background: #161a22; border: 1px solid var(--hex); border-radius: 8px;
+      padding: 8px 10px; margin-top: 8px; font-size: 12px;
+    }
+    .machinesetup .ms-title {
+      font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--hex); margin: 0 0 6px;
+    }
+    .machinesetup .ms-tools { color: var(--text); font-weight: 600; margin: 0 0 4px; }
+    .machinesetup ul { margin: 4px 0 0; padding-left: 18px; color: var(--muted); }
+    .machinesetup li { margin: 2px 0; }
   </style>
 </head>
 <body>
@@ -67,13 +78,16 @@
     </div>
     <div class="row" id="steps"></div>
     <div class="dims" id="dims"></div>
+    <div class="machinesetup" id="machinesetup" aria-live="polite"></div>
     <h2>Hex cut counts</h2>
     <div class="cutbox" id="cutlist"></div>
     <div class="hint">
       Drag orbit · scroll zoom · right-drag pan<br>
       <span class="legend"><span style="background:#c48a4a"></span>strut</span>
       <span class="legend"><span style="background:#5b3a1e"></span>6.5° bevel</span>
-      <span class="legend"><span style="background:#7dcea0"></span>jig</span><br>
+      <span class="legend"><span style="background:#7dcea0"></span>jig</span>
+      <span class="legend"><span style="background:#6b8caf"></span>machine</span>
+      <span class="legend"><span style="background:#3d8bfd"></span>fence/stop</span><br>
       Panel shell: <a href="./assembly.html">assembly guide</a><br>
       Steps follow <a href="https://youtu.be/Sl9fEp-27EM" target="_blank" rel="noopener">this panel-build video</a>
       + Trillium plan dimensions (PDF p5 / cross-section p7).
@@ -102,7 +116,9 @@
       BEVEL_RAD,
       BLANK_LEN,
       FULL_2X6_W,
-      PLAN_IN
+      PLAN_IN,
+      TOOL_TABLE_SAW,
+      TOOL_MITER_SAW
     } from './panel/panel-specs.js';
 
     // Locked dims live in panel/panel-specs.js (single source of truth).
@@ -113,61 +129,147 @@
         id: 0,
         title: '1. Cut blanks',
         text: () => `Longest hex side is ${fmt(HEX.a)}. Cut strut blanks ~${fmt(BLANK_LEN)} for handling. Batch: ${HEX.qty} panels × 3 = ${HEX.qty * 3} strut blanks.`,
-        view: 'blanks'
+        view: 'blanks',
+        machineVisual: 'miterCrosscut',
+        machineSetup: {
+          machines: () => `${TOOL_MITER_SAW} (prefer) · or hand saw`,
+          settings: () => [
+            `Prefer ${TOOL_MITER_SAW} for crosscutting blanks to ~${fmt(BLANK_LEN)}`,
+            'Use a stop block for repeat blank length on the miter saw',
+            'No bevel / no compound for this step'
+          ]
+        }
       },
       {
         id: 1,
         title: '2. Rip stock',
         text: () => `On the DEWALT DWE7492 table saw: rip 2×6 in half → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}. Keep pairs matched so both halves stay the same size. Rip capacity is fine for ~${fmt(BLANK_LEN)} blanks.`,
-        view: 'stock'
+        view: 'stock',
+        machineVisual: 'tableRip',
+        machineSetup: {
+          machines: () => TOOL_TABLE_SAW,
+          settings: () => [
+            'Blade square: 90° / 0° bevel (no tilt)',
+            `Fence: half of 2×6 → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}`,
+            'Use a push stick; keep matched pairs'
+          ]
+        }
       },
       {
         id: 2,
         title: '3. Optional finish',
         text: () => `Optional (video workflow): finish or stain stock before the final bevel rip so you coat the wide faces while they are still flat.`,
-        view: 'stock'
+        view: 'stock',
+        machineVisual: 'none',
+        machineSetup: {
+          machines: () => 'None / hand tools only',
+          settings: () => [
+            'No saw setup for this step',
+            'Finish or stain flat faces before the bevel rip'
+          ]
+        }
       },
       {
         id: 3,
         title: '4. Lay out hex jig',
         text: () => `${units === 'mm' ? '19 mm' : '¾"'} plywood larger than the panel. Draw a straight base; mark ends ${fmt(HEX.c)} apart. From each mark, swing arcs at ${fmt(HEX.a)} (compass or screw+string). Apex = arc intersection. Connect the three points.`,
-        view: 'jig'
+        view: 'jig',
+        machineVisual: 'handLayout',
+        machineSetup: {
+          machines: () => 'None / hand tools only',
+          settings: () => [
+            'No saw — measuring / compass (or screw+string) only',
+            `Base marks ${fmt(HEX.c)} apart; arcs at ${fmt(HEX.a)}`
+          ]
+        }
       },
       {
         id: 4,
         title: '5. Rip 6.5° bevel',
         text: () => `On the DEWALT DWE7492: matched bevel-rip (second rip) a ${BEVEL_DEG}° bevel on one long edge. The ${BEVEL_DEG}° sets the taper only; set the fence so finished face width is ${fmt(STRUT_W)} (PDF p7) — ${fmt(STRUT_H)}×${fmt(STOCK_W)} → ${fmt(STRUT_H)}×${fmt(STRUT_W)} comes from that fence setting, not from the angle alone. Both halves same size; keep the first strut as fence/template. Bevel faces outward. Bevel scale: EU 90°=square → set ~83.5° for ${BEVEL_DEG}° off square; if your scale is 0–45° from vertical, set ${BEVEL_DEG}° directly.`,
-        view: 'bevel'
+        view: 'bevel',
+        machineVisual: 'tableBevel',
+        machineSetup: {
+          machines: () => TOOL_TABLE_SAW,
+          settings: () => [
+            `Bevel scale: EU 90°=square → ~83.5° (or set ${BEVEL_DEG}° on a 0–45° scale)`,
+            `Fence for finished face ${fmt(STRUT_W)} (${STRUT_W} mm)`,
+            'Keep first strut as fence / template; matched pairs; bevel faces out'
+          ]
+        }
       },
       {
         id: 5,
         title: '6. Finish jig stops',
         text: () => `Place struts wide-face down on the jig lines. Add backing stops so each strut edge just splits the layout line.`,
-        view: 'jigStops'
+        view: 'jigStops',
+        machineVisual: 'none',
+        machineSetup: {
+          machines: () => 'None / hand tools only',
+          settings: () => [
+            'No saw setup for this step',
+            'Backing stops only — strut edge splits the layout line'
+          ]
+        }
       },
       {
         id: 6,
         title: '7. Initial miters',
         text: () => `On the MAKITA LS1019L (dual-bevel slider + laser): simple miters (not compound), long-point to long-point, cut close to the end. Per panel: two @ ${HEX.base}° (bases) + one @ ${HEX.apex}° (apex), off 90°. Miter 0–60° covers both; the ~31.6° stop is close — dial fine to ${HEX.apex}° with scale/laser, do not trust the stop alone. Use a stop block for repeat Hex blanks. First-end batch: ${HEX.qty * 2} × ${HEX.base}° and ${HEX.qty} × ${HEX.apex}°. Check reciprocal overlap on the jig.`,
-        view: 'miters'
+        view: 'miters',
+        machineVisual: 'miterSimple',
+        machineSetup: {
+          machines: () => TOOL_MITER_SAW,
+          settings: () => [
+            'Bevel 0° (simple miter, not compound)',
+            `Miter ${HEX.base}° (bases) or ${HEX.apex}° (apex) off 90°`,
+            `Dial ${HEX.apex}° — do not trust the ~31.6° stop alone`,
+            'Stop block; cut close to the end; long-point to long-point'
+          ]
+        }
       },
       {
         id: 7,
         title: '8. Compound trim ears',
         text: () => `Prefer the MAKITA LS1019L for compound ear trim: same miter + ${BEVEL_DEG}° bevel (dual bevel 0–48° L/R — no flip for opposite bevels). Use a stop block. Hand saw only if needed. Check fit every 5–10 struts.`,
-        view: 'ears'
+        view: 'ears',
+        machineVisual: 'miterCompound',
+        machineSetup: {
+          machines: () => `${TOOL_MITER_SAW} (prefer) · hand saw only if needed`,
+          settings: () => [
+            `Same miter as step 7 + ${BEVEL_DEG}° bevel (compound)`,
+            'Dual bevel L/R — no flip for opposite bevels',
+            'Stop block; check fit every 5–10 struts'
+          ]
+        }
       },
       {
         id: 8,
         title: '9. Assemble',
         text: () => `Predrill if needed; two screws per corner; bevels out. QA: a symmetrical hex should flip on the jig and sit snug both ways.`,
-        view: 'assemble'
+        view: 'assemble',
+        machineVisual: 'drill',
+        machineSetup: {
+          machines: () => 'Drill / driver (no saw)',
+          settings: () => [
+            'No saw angles for this step',
+            'Predrill if needed; two screws per corner; bevels out'
+          ]
+        }
       },
       {
         id: 9,
         title: '10. Done / counts',
         text: () => `Panel complete. Full dome: ${HEX.qty} hex panels including 4 windows. Sides ${fmt(HEX.a)} / ${fmt(HEX.b)} / base ${fmt(HEX.c)}; miters ${HEX.apex}° apex + ${HEX.base}° / ${HEX.base}°.`,
-        view: 'done'
+        view: 'done',
+        machineVisual: 'none',
+        machineSetup: {
+          machines: () => 'None / no saw',
+          settings: () => [
+            'No saw setup — panel complete',
+            'Brief reminder: DWE7492 for rips/bevel; LS1019L for miters/ears'
+          ]
+        }
       }
     ];
 
@@ -321,6 +423,174 @@
       }
     }
 
+    const machineMat = new THREE.MeshStandardMaterial({ color: 0x6b8caf, roughness: 0.55, metalness: 0.25 });
+    const fenceMat = new THREE.MeshStandardMaterial({ color: 0x3d8bfd, roughness: 0.45, metalness: 0.15 });
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0xc0c8d4, roughness: 0.35, metalness: 0.6 });
+    const stopMat = new THREE.MeshStandardMaterial({ color: 0xf0a202, roughness: 0.55, metalness: 0.1 });
+    const noneMat = new THREE.MeshStandardMaterial({ color: 0x3a4250, roughness: 0.8 });
+
+    function arrowMesh(dir, color = 0x7dcea0) {
+      const g = new THREE.Group();
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.22, 8), new THREE.MeshStandardMaterial({ color }));
+      shaft.rotation.z = -Math.PI / 2;
+      shaft.position.x = 0.11;
+      const head = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.05, 10), new THREE.MeshStandardMaterial({ color }));
+      head.rotation.z = -Math.PI / 2;
+      head.position.x = 0.24;
+      g.add(shaft, head);
+      const d = dir.clone().normalize();
+      const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), d);
+      g.setRotationFromQuaternion(quat);
+      return g;
+    }
+
+    /** Schematic DEWALT DWE7492 — fence, blade bevel, workpiece, cut direction */
+    function addTableSawSchematic({ bevelDeg = 0, fenceFaceMm, stockWmm, stockHmm, label }) {
+      const g = new THREE.Group();
+      const table = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.04, 0.7), machineMat);
+      table.position.set(0, -0.02, 0);
+      table.receiveShadow = true;
+      g.add(table);
+      const insert = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.005, 0.28), noneMat);
+      insert.position.set(0, 0.002, 0);
+      g.add(insert);
+      const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.004, 48), bladeMat);
+      blade.rotation.x = Math.PI / 2;
+      blade.rotation.z = (bevelDeg * Math.PI) / 180;
+      blade.position.set(0, 0.08, 0);
+      g.add(blade);
+      const bevelLabel = bevelDeg === 0
+        ? 'blade square 90°/0°'
+        : `blade bevel ${bevelDeg}° (EU ~${(90 - bevelDeg).toFixed(1)}°)`;
+      g.add(makeLabel(bevelLabel, new THREE.Vector3(0.28, 0.22, 0.05)));
+      const fenceX = fenceFaceMm / 1000;
+      const fence = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.16, 0.65), fenceMat);
+      fence.position.set(fenceX + 0.015, 0.08, 0);
+      g.add(fence);
+      g.add(makeLabel(`fence → ${fmt(fenceFaceMm)}`, new THREE.Vector3(fenceX + 0.12, 0.2, -0.25)));
+      const w = stockWmm / 1000;
+      const h = stockHmm / 1000;
+      const stock = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.85), woodMat);
+      stock.position.set(fenceX - w / 2, h / 2, 0.05);
+      stock.castShadow = true;
+      g.add(stock);
+      g.add(makeLabel(label || 'workpiece', new THREE.Vector3(fenceX - w / 2, h + 0.08, 0.35)));
+      const arr = arrowMesh(new THREE.Vector3(0, 0, -1));
+      arr.position.set(fenceX - w / 2, h + 0.05, 0.45);
+      g.add(arr);
+      g.add(makeLabel('cut / push', new THREE.Vector3(fenceX - w / 2 + 0.15, h + 0.12, 0.45)));
+      g.add(makeLabel('DWE7492', new THREE.Vector3(-0.4, 0.18, -0.28)));
+      group.add(g);
+      return g;
+    }
+
+    /** Schematic MAKITA LS1019L — miter, bevel, stop block, workpiece on fence */
+    function addMiterSawSchematic({ miterDeg = 0, bevelDeg = 0, bevelSide = 'L', stop = true, label, compound = false }) {
+      const g = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.35, 0.05, 48), machineMat);
+      base.position.y = -0.025;
+      g.add(base);
+      const fence = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.14, 0.025), fenceMat);
+      fence.position.set(0, 0.07, -0.12);
+      g.add(fence);
+      g.add(makeLabel('fence', new THREE.Vector3(0.28, 0.18, -0.12)));
+      const miterRad = (miterDeg * Math.PI) / 180;
+      const arm = new THREE.Group();
+      arm.rotation.y = -miterRad;
+      const armBar = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.35), machineMat);
+      armBar.position.set(0, 0.2, 0.05);
+      arm.add(armBar);
+      const bladeG = new THREE.Group();
+      const blade = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.004, 48), bladeMat);
+      blade.rotation.x = Math.PI / 2;
+      bladeG.add(blade);
+      const bevelRad = (bevelDeg * Math.PI) / 180;
+      bladeG.rotation.z = bevelSide === 'R' ? bevelRad : -bevelRad;
+      bladeG.position.set(0, 0.2, 0.18);
+      arm.add(bladeG);
+      g.add(arm);
+      const blank = new THREE.Mesh(new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 0.55), woodMat);
+      blank.position.set(0.08, STRUT_H / 2000, -0.05);
+      blank.castShadow = true;
+      g.add(blank);
+      if (stop) {
+        const sb = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.06), stopMat);
+        sb.position.set(-0.28, 0.04, -0.05);
+        g.add(sb);
+        g.add(makeLabel('stop block', new THREE.Vector3(-0.28, 0.14, 0.05)));
+      }
+      g.add(makeLabel(`miter ${miterDeg}°`, new THREE.Vector3(0.25, 0.32, 0.2)));
+      g.add(makeLabel(bevelDeg === 0 ? 'bevel 0°' : `bevel ${bevelDeg}° ${bevelSide}`, new THREE.Vector3(-0.25, 0.32, 0.2)));
+      if (compound) g.add(makeLabel('dual bevel L/R — no flip', new THREE.Vector3(0, 0.4, -0.2)));
+      g.add(makeLabel(label || 'LS1019L', new THREE.Vector3(0, 0.05, 0.35)));
+      g.add(makeLabel('work against fence', new THREE.Vector3(0.15, 0.12, 0.15)));
+      group.add(g);
+      return g;
+    }
+
+    function addNoMachineVisual(kind) {
+      const g = new THREE.Group();
+      if (kind === 'handLayout') {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.008, 8, 48), fenceMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(0, 0.02, 0.35);
+        g.add(ring);
+        const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.25, 8), stopMat);
+        stick.rotation.z = Math.PI / 2;
+        stick.position.set(0.12, 0.03, 0.35);
+        g.add(stick);
+        g.add(makeLabel('no saw — compass / measure', new THREE.Vector3(0, 0.15, 0.35)));
+      } else if (kind === 'drill') {
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.18), machineMat);
+        body.position.set(0, 0.12, 0);
+        g.add(body);
+        const bit = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.1, 8), bladeMat);
+        bit.position.set(0, 0.05, 0.12);
+        g.add(bit);
+        g.add(makeLabel('drill / driver — no saw', new THREE.Vector3(0, 0.25, 0)));
+      } else {
+        const badge = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 0.02), noneMat);
+        badge.position.set(0, 0.2, 0);
+        g.add(badge);
+        g.add(makeLabel('no machine / hand tools', new THREE.Vector3(0, 0.32, 0)));
+      }
+      group.add(g);
+      return g;
+    }
+
+    function addMachineVisual(kind) {
+      if (!kind) return;
+      if (kind === 'tableRip') {
+        addTableSawSchematic({
+          bevelDeg: 0,
+          fenceFaceMm: STOCK_W,
+          stockWmm: FULL_2X6_W,
+          stockHmm: STRUT_H,
+          label: `2×6 → ${fmt(STRUT_H)}×${fmt(STOCK_W)}`
+        });
+      } else if (kind === 'tableBevel') {
+        addTableSawSchematic({
+          bevelDeg: BEVEL_DEG,
+          fenceFaceMm: STRUT_W,
+          stockWmm: STOCK_W,
+          stockHmm: STRUT_H,
+          label: `${BEVEL_DEG}° → face ${fmt(STRUT_W)}`
+        });
+      } else if (kind === 'miterCrosscut') {
+        addMiterSawSchematic({ miterDeg: 0, bevelDeg: 0, stop: true, label: `crosscut ~${fmt(BLANK_LEN)}` });
+      } else if (kind === 'miterSimple') {
+        addMiterSawSchematic({ miterDeg: HEX.apex, bevelDeg: 0, stop: true, label: `miters ${HEX.base}° / ${HEX.apex}°` });
+      } else if (kind === 'miterCompound') {
+        addMiterSawSchematic({
+          miterDeg: HEX.apex, bevelDeg: BEVEL_DEG, bevelSide: 'L', stop: true, compound: true,
+          label: `compound ears ${HEX.apex}° + ${BEVEL_DEG}°`
+        });
+        group.add(makeLabel('RH bevel = opposite tilt (no flip)', new THREE.Vector3(0, 0.48, 0)));
+      } else if (kind === 'handLayout' || kind === 'drill' || kind === 'none') {
+        addNoMachineVisual(kind);
+      }
+    }
+
     function rebuild() {
       group.clear();
       const view = STEPS[step].view;
@@ -328,59 +598,40 @@
       const up = new THREE.Vector3(0, 1, 0);
 
       if (view === 'blanks') {
-        for (let i = 0; i < 3; i++) {
-          const blank = new THREE.Mesh(
-            new THREE.BoxGeometry(FULL_2X6_W / 1000, STRUT_H / 1000, BLANK_LEN / 1000),
-            woodMat
-          );
-          blank.position.set((i - 1) * 0.22, STRUT_H / 2000, 0);
-          group.add(blank);
-        }
-        group.add(makeLabel(`2×6 blank ~${fmt(BLANK_LEN)}`, new THREE.Vector3(0, 0.1, 0.5)));
-        group.add(makeLabel(`× ${HEX.qty * 3} struts`, new THREE.Vector3(0, 0.1, -0.5)));
+        // Batch labels; LS1019L schematic shows crosscut + stop block
+        group.add(makeLabel(`2×6 blank ~${fmt(BLANK_LEN)}`, new THREE.Vector3(-0.55, 0.35, 0)));
+        group.add(makeLabel(`× ${HEX.qty * 3} strut blanks`, new THREE.Vector3(-0.55, 0.25, 0)));
       }
 
       if (view === 'stock') {
-        const twoBySix = new THREE.Mesh(
-          new THREE.BoxGeometry(0.14, STRUT_H / 1000, 1.0),
-          woodMat
-        );
-        twoBySix.position.set(-0.5, STRUT_H / 2000, 0);
-        group.add(twoBySix);
-        group.add(makeLabel('2×6', new THREE.Vector3(-0.5, 0.08, 0.4)));
-
-        const mat = step === 2 ? stainMat : woodMat;
-        [-0.05, 0.12].forEach((x, i) => {
-          const half = new THREE.Mesh(
-            new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 1.0),
-            mat
-          );
-          half.position.set(x, STRUT_H / 2000, 0);
-          group.add(half);
-          group.add(makeLabel(i === 0 ? `${fmt(STRUT_H)}×${fmt(STOCK_W)}` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
-        });
+        if (step === 2) {
+          // Optional finish — no saw; stained matched pairs
+          [-0.15, 0.15].forEach((x, i) => {
+            const half = new THREE.Mesh(
+              new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 1.0),
+              stainMat
+            );
+            half.position.set(x, STRUT_H / 2000, 0);
+            group.add(half);
+            group.add(makeLabel(i === 0 ? `${fmt(STRUT_H)}×${fmt(STOCK_W)} stained` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
+          });
+        }
+        // step 1 rip: DWE7492 schematic carries fence / blade / push
       }
 
       if (view === 'bevel') {
-        const stock = new THREE.Mesh(
-          new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 1.1),
-          woodMat
-        );
-        stock.position.set(-0.35, STRUT_H / 2000, 0);
-        group.add(stock);
-        group.add(makeLabel(`stock ${fmt(STOCK_W)}`, new THREE.Vector3(-0.35, 0.08, 0.45)));
-
-        const finished = strutMesh(1100, STRUT_W);
+        // Template strut reference; DWE7492 schematic shows fence + ~83.5°/6.5°
+        const finished = strutMesh(900, STRUT_W);
         finished.rotation.x = -Math.PI / 2;
-        finished.position.set(0.35, 0, 0);
+        finished.position.set(-0.65, 0, 0);
         group.add(finished);
-        const bevel = new THREE.Mesh(
-          new THREE.BoxGeometry(0.005, STRUT_H / 1000, 1.1),
+        const bevelEdge = new THREE.Mesh(
+          new THREE.BoxGeometry(0.005, STRUT_H / 1000, 0.9),
           bevelMat
         );
-        bevel.position.set(0.35 + STRUT_W / 2000, STRUT_H / 2000, 0);
-        group.add(bevel);
-        group.add(makeLabel(`${BEVEL_DEG}° → ${fmt(STRUT_H)}×${fmt(STRUT_W)}`, new THREE.Vector3(0.35, 0.08, 0.45)));
+        bevelEdge.position.set(-0.65 + STRUT_W / 2000, STRUT_H / 2000, 0);
+        group.add(bevelEdge);
+        group.add(makeLabel(`template strut ${fmt(STRUT_H)}×${fmt(STRUT_W)}`, new THREE.Vector3(-0.65, 0.12, 0.4)));
       }
 
       if (view === 'jig' || view === 'jigStops') {
@@ -431,9 +682,37 @@
         }
       }
 
+      // Machine setup schematic (syncs with step — written panel + 3D)
+      {
+        const mv = STEPS[step].machineVisual;
+        const keepJig = (view === 'jig' || view === 'jigStops' || view === 'miters' || view === 'ears' || view === 'assemble' || view === 'done');
+        const before = group.children.length;
+        addMachineVisual(mv);
+        if (keepJig && (mv === 'miterSimple' || mv === 'miterCompound' || mv === 'drill' || mv === 'none' || mv === 'handLayout')) {
+          const dx = (mv === 'miterSimple' || mv === 'miterCompound') ? 0.95 : 0.7;
+          for (let i = before; i < group.children.length; i++) {
+            group.children[i].position.x += dx;
+            group.children[i].position.z += 0.15;
+          }
+        }
+      }
+
       const grid = new THREE.GridHelper(3, 12, 0x2a3140, 0x1a1e26);
       grid.position.y = -0.02;
       group.add(grid);
+    }
+
+    function setMachineSetup() {
+      const s = STEPS[step];
+      const ms = s.machineSetup;
+      const el = document.getElementById('machinesetup');
+      const tools = typeof ms.machines === 'function' ? ms.machines() : ms.machines;
+      const settings = (typeof ms.settings === 'function' ? ms.settings() : ms.settings) || [];
+      const lis = settings.map((line) => `<li>${line}</li>`).join('');
+      el.innerHTML =
+        `<div class="ms-title">Machine setup</div>` +
+        `<div class="ms-tools">${tools}</div>` +
+        (lis ? `<ul>${lis}</ul>` : '');
     }
 
     function setDims() {
@@ -478,6 +757,7 @@
       document.getElementById('uMM').classList.toggle('active', units === 'mm');
       renderSteps();
       setDims();
+      setMachineSetup();
       setCutList();
       rebuild();
     }

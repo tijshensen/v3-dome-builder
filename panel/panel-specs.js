@@ -41,6 +41,10 @@ export const BLANK_LEN = 1219;   // ~4' handling blanks
 export const BLANK_LEN_IN = "4'-0\"";
 export const FULL_2X6_W = 140;   // full 2×6 section before rip (~5½")
 
+/** Locked shop tools (Hex guide machine-setup panel) */
+export const TOOL_TABLE_SAW = 'DEWALT DWE7492 table saw';
+export const TOOL_MITER_SAW = 'MAKITA LS1019L miter saw';
+
 /**
  * Hex ×73 including 4 windows.
  * Edges a=b=1155 mm, c(base)=1130 mm; miters apex 31.4° bases 29.3°.
@@ -189,6 +193,8 @@ export default {
   BLANK_LEN,
   BLANK_LEN_IN,
   FULL_2X6_W,
+  TOOL_TABLE_SAW,
+  TOOL_MITER_SAW,
   PLAN_IN,
   VIDEO_URL,
   PANEL_MAP_URL,
