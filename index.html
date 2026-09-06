@@ -75,6 +75,29 @@
     .machine-hud li { margin: 2px 0; }
     .vizrow { display: none; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
     .vizrow.show { display: flex; }
+    .split-chrome {
+      position: absolute; inset: 0; pointer-events: none; z-index: 3;
+    }
+    .split-chrome[hidden] { display: none !important; }
+    .split-divider {
+      position: absolute; left: 50%; top: 10%; bottom: 10%; width: 1px;
+      background: color-mix(in srgb, var(--line) 85%, transparent);
+    }
+    .split-label {
+      position: absolute; top: 14px;
+      font: 700 11px/1 system-ui; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line);
+      background: #1c2028cc;
+    }
+    .split-label-left {
+      left: 28%; transform: translateX(-50%);
+      color: var(--wood); border-color: #6a4a2a;
+    }
+    .split-label-right {
+      left: 72%; transform: translateX(-50%);
+      color: #f5c518; border-color: #5a4a10;
+    }
+    .split-chrome.makita .split-label-right { color: #2ec4b6; border-color: #1a8f8a; }
   </style>
 </head>
 <body>
@@ -92,8 +115,8 @@
       <button id="btnReset" type="button">Reset view</button>
     </div>
     <div class="row vizrow" id="vizrow">
-      <button id="vizMachine" class="active" type="button" title="Dedicated machine schematic">Machine</button>
-      <button id="vizWood" type="button" title="Wood / jig view">Wood</button>
+      <button id="vizMachine" class="active" type="button" title="Split: materials left · machine right">Machine</button>
+      <button id="vizWood" type="button" title="Materials / jig only (left focus)">Wood</button>
     </div>
     <div class="row" id="steps"></div>
     <div class="dims" id="dims"></div>
@@ -115,6 +138,11 @@
     </div>
   </div>
   <div id="machineHud" class="machine-hud" hidden aria-live="polite"></div>
+  <div id="splitChrome" class="split-chrome" hidden aria-hidden="true">
+    <div class="split-divider"></div>
+    <div class="split-label split-label-left">Materials</div>
+    <div class="split-label split-label-right">Machine</div>
+  </div>
 <script type="importmap">
 {
   "imports": {
@@ -298,6 +326,7 @@
     const _qs = new URLSearchParams(location.search);
     let step = Math.max(0, Math.min(STEPS.length - 1, parseInt(_qs.get('step') || '0', 10) || 0));
     let units = 'in'; // imperial primary for Hex review
+    if (_qs.get('pause') === '1') window.__pause = true;
 
     const canvas = document.getElementById('c');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -426,14 +455,14 @@
       const jig = new THREE.Mesh(new THREE.BoxGeometry(c + 0.2, 0.012, h + 0.2), jigMat);
       jig.position.set(0, -0.008, h / 2);
       jig.receiveShadow = true;
-      group.add(jig);
+      woodTarget.add(jig);
       const outline = new THREE.BufferGeometry().setFromPoints([pA, pB, pC, pA]);
       const line = new THREE.Line(outline, markMat);
       line.position.y = 0.002;
-      group.add(line);
-      group.add(makeLabel(fmt(HEX.c), new THREE.Vector3(0, 0.05, -0.05)));
-      group.add(makeLabel(fmt(HEX.a), new THREE.Vector3((pA.x + pC.x) / 2 - 0.08, 0.05, (pA.z + pC.z) / 2)));
-      group.add(makeLabel(fmt(HEX.b), new THREE.Vector3((pB.x + pC.x) / 2 + 0.08, 0.05, (pB.z + pC.z) / 2)));
+      woodTarget.add(line);
+      woodTarget.add(makeLabel(fmt(HEX.c), new THREE.Vector3(0, 0.05, -0.05)));
+      woodTarget.add(makeLabel(fmt(HEX.a), new THREE.Vector3((pA.x + pC.x) / 2 - 0.08, 0.05, (pA.z + pC.z) / 2)));
+      woodTarget.add(makeLabel(fmt(HEX.b), new THREE.Vector3((pB.x + pC.x) / 2 + 0.08, 0.05, (pB.z + pC.z) / 2)));
       if (withStops) {
         const stopMat = new THREE.MeshStandardMaterial({ color: 0x2a4a35, roughness: 0.7 });
         [[pA, pB], [pB, pC], [pC, pA]].forEach(([u, v]) => {
@@ -441,7 +470,7 @@
           const stop = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 0.08), stopMat);
           stop.position.copy(mid);
           stop.position.y = 0.01;
-          group.add(stop);
+          woodTarget.add(stop);
         });
       }
     }
@@ -463,6 +492,11 @@
     });
 
     let vizMode = 'machine';
+    // Saw steps: materials/wood on LEFT, branded machine schematic on RIGHT
+    let woodTarget = group;
+    let machineTarget = group;
+    const WOOD_SPLIT_X = -1.25;
+    const MACHINE_SPLIT_X = 1.3;
 
     function hasSawVisual(kind) {
       return kind === 'tableRip' || kind === 'tableBevel' || kind === 'miterCrosscut'
@@ -585,7 +619,7 @@
       ];
       if (bevelDeg > 0) hud.splice(1, 0, 'EU 90-based scales only → ~' + (90 - bevelDeg).toFixed(1) + '°');
       setMachineHud('dewalt', 'DEWALT DWE7492', hud);
-      g.scale.setScalar(1.2); group.add(g); return g;
+      g.scale.setScalar(1.05); machineTarget.add(g); return g;
     }
 
     /** MAKITA LS1019L — teal head, twin rails, clear guard, silver turntable, teal kerf */
@@ -653,7 +687,7 @@
       if (label) hud.push(label);
       hud.push('Teal kerf · silver turntable · work on fence');
       setMachineHud('makita', 'MAKITA LS1019L', hud);
-      g.scale.setScalar(1.25); group.add(g); return g;
+      g.scale.setScalar(1.1); machineTarget.add(g); return g;
     }
 
     function addNoMachineVisual(kind) {
@@ -683,7 +717,7 @@
         g.add(badge);
         g.add(makeLabel('no machine / hand tools', new THREE.Vector3(0, 0.32, 0)));
       }
-      group.add(g);
+      woodTarget.add(g);
       return g;
     }
 
@@ -721,22 +755,61 @@
 
     function rebuild() {
       group.clear();
+      const woodRoot = new THREE.Group();
+      const machineRoot = new THREE.Group();
+      group.add(woodRoot);
+      group.add(machineRoot);
+      woodTarget = woodRoot;
+      machineTarget = machineRoot;
+
       const view = STEPS[step].view;
       const mv = STEPS[step].machineVisual;
       const saw = hasSawVisual(mv);
-      const showWood = !saw || vizMode === 'wood';
+      // Machine mode (default): clear split — materials LEFT, machine RIGHT
+      // Wood mode: materials only (left region when coming from a saw step)
+      const showWood = !saw || vizMode === 'wood' || vizMode === 'machine';
       const showMachine = !saw || vizMode === 'machine';
+      const split = saw && showWood && showMachine;
+      if (split) {
+        woodRoot.position.x = WOOD_SPLIT_X;
+        machineRoot.position.x = MACHINE_SPLIT_X;
+      }
       const { pA, pB, pC, h, c } = hexPoints();
       const up = new THREE.Vector3(0, 1, 0);
       if (!showMachine) setMachineHud(null);
 
       if (showWood && view === 'blanks') {
-        // Batch labels; LS1019L schematic shows crosscut + stop block
-        group.add(makeLabel(`2×6 blank ~${fmt(BLANK_LEN)}`, new THREE.Vector3(-0.55, 0.35, 0)));
-        group.add(makeLabel(`× ${HEX.qty * 3} strut blanks`, new THREE.Vector3(-0.55, 0.25, 0)));
+        const blank = new THREE.Mesh(
+          new THREE.BoxGeometry(FULL_2X6_W / 1000, STRUT_H / 1000, Math.min(BLANK_LEN / 1000, 1.05)),
+          woodMat
+        );
+        blank.position.set(0, STRUT_H / 2000, 0);
+        woodTarget.add(blank);
+        woodTarget.add(makeLabel(`2×6 blank ~${fmt(BLANK_LEN)}`, new THREE.Vector3(0, 0.14, 0.42)));
+        woodTarget.add(makeLabel(`× ${HEX.qty * 3} strut blanks`, new THREE.Vector3(0, 0.06, 0.42)));
       }
 
       if (showWood && view === 'stock') {
+        if (step === 1) {
+          const full = new THREE.Mesh(
+            new THREE.BoxGeometry(FULL_2X6_W / 1000, STRUT_H / 1000, 1.0),
+            woodMat
+          );
+          full.position.set(-0.22, STRUT_H / 2000, 0);
+          woodTarget.add(full);
+          woodTarget.add(makeLabel(`2×6 stock`, new THREE.Vector3(-0.22, 0.1, 0.42)));
+          [-0.02, 0.16].forEach((x, i) => {
+            const half = new THREE.Mesh(
+              new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 1.0),
+              woodMat
+            );
+            half.position.set(x, STRUT_H / 2000, 0);
+            woodTarget.add(half);
+            if (i === 0) {
+              woodTarget.add(makeLabel(`rip → ${fmt(STRUT_H)}×${fmt(STOCK_W)}`, new THREE.Vector3(0.07, 0.1, 0.42)));
+            }
+          });
+        }
         if (step === 2) {
           // Optional finish — no saw; stained matched pairs
           [-0.15, 0.15].forEach((x, i) => {
@@ -745,37 +818,36 @@
               stainMat
             );
             half.position.set(x, STRUT_H / 2000, 0);
-            group.add(half);
-            group.add(makeLabel(i === 0 ? `${fmt(STRUT_H)}×${fmt(STOCK_W)} stained` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
+            woodTarget.add(half);
+            woodTarget.add(makeLabel(i === 0 ? `${fmt(STRUT_H)}×${fmt(STOCK_W)} stained` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
           });
         }
-        // step 1 rip: DWE7492 schematic carries fence / blade / push
       }
 
       if (showWood && view === 'bevel') {
-        // Template strut reference; DWE7492 schematic shows fence + 6.5° (0–45° scale)
         const finished = strutMesh(900, STRUT_W);
         finished.rotation.x = -Math.PI / 2;
-        finished.position.set(-0.65, 0, 0);
-        group.add(finished);
+        finished.position.set(0, 0, 0);
+        woodTarget.add(finished);
         const bevelEdge = new THREE.Mesh(
           new THREE.BoxGeometry(0.005, STRUT_H / 1000, 0.9),
           bevelMat
         );
-        bevelEdge.position.set(-0.65 + STRUT_W / 2000, STRUT_H / 2000, 0);
-        group.add(bevelEdge);
-        group.add(makeLabel(`template strut ${fmt(STRUT_H)}×${fmt(STRUT_W)}`, new THREE.Vector3(-0.65, 0.12, 0.4)));
+        bevelEdge.position.set(STRUT_W / 2000, STRUT_H / 2000, 0);
+        woodTarget.add(bevelEdge);
+        woodTarget.add(makeLabel(`template strut ${fmt(STRUT_H)}×${fmt(STRUT_W)}`, new THREE.Vector3(0, 0.14, 0.4)));
+        woodTarget.add(makeLabel(`${BEVEL_DEG}° bevel out`, new THREE.Vector3(0, 0.06, 0.4)));
       }
 
       if (showWood && (view === 'jig' || view === 'jigStops')) {
         addJig(pA, pB, pC, h, c, view === 'jigStops');
         if (view === 'jig') {
-          group.add(makeLabel('arc ∩ = apex', pC.clone().add(new THREE.Vector3(0, 0.08, 0.05))));
+          woodTarget.add(makeLabel('arc ∩ = apex', pC.clone().add(new THREE.Vector3(0, 0.08, 0.05))));
         } else {
           const s1 = placeStrut(pA, pB, up);
           const s2 = placeStrut(pB, pC, up);
           const s3 = placeStrut(pC, pA, up);
-          group.add(s1, s2, s3);
+          woodTarget.add(s1, s2, s3);
         }
       }
 
@@ -787,42 +859,52 @@
         s1.position.z -= 0.22;
         s2.position.x += 0.22;
         s3.position.x -= 0.22;
-        group.add(s1, s2, s3);
-        group.add(makeLabel(`${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
-        group.add(makeLabel(`${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.06, 0.08, 0))));
-        group.add(makeLabel(`${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.06, 0.08, 0))));
+        woodTarget.add(s1, s2, s3);
+        woodTarget.add(makeLabel(`${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        woodTarget.add(makeLabel(`${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.06, 0.08, 0))));
+        woodTarget.add(makeLabel(`${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.06, 0.08, 0))));
       }
 
       if (showWood && (view === 'ears' || view === 'assemble' || view === 'done')) {
         addJig(pA, pB, pC, h, c, view !== 'ears');
-        group.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
-        group.add(makeLabel(`${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
-        group.add(makeLabel(`${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.06, 0.08, 0))));
-        group.add(makeLabel(`${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.06, 0.08, 0))));
-        group.add(makeLabel(fmt(HEX.c), new THREE.Vector3(0, 0.06, -0.04)));
-        group.add(makeLabel(fmt(HEX.a), new THREE.Vector3((pA.x + pC.x) / 2 - 0.08, 0.06, (pA.z + pC.z) / 2)));
-        group.add(makeLabel(fmt(HEX.b), new THREE.Vector3((pB.x + pC.x) / 2 + 0.08, 0.06, (pB.z + pC.z) / 2)));
+        woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
+        woodTarget.add(makeLabel(`${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        woodTarget.add(makeLabel(`${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.06, 0.08, 0))));
+        woodTarget.add(makeLabel(`${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.06, 0.08, 0))));
+        woodTarget.add(makeLabel(fmt(HEX.c), new THREE.Vector3(0, 0.06, -0.04)));
+        woodTarget.add(makeLabel(fmt(HEX.a), new THREE.Vector3((pA.x + pC.x) / 2 - 0.08, 0.06, (pA.z + pC.z) / 2)));
+        woodTarget.add(makeLabel(fmt(HEX.b), new THREE.Vector3((pB.x + pC.x) / 2 + 0.08, 0.06, (pB.z + pC.z) / 2)));
         if (view === 'ears') {
           [pA, pB, pC].forEach((p) => {
             const ear = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.05, 4), bevelMat);
             ear.position.copy(p);
             ear.position.y = 0.03;
-            group.add(ear);
+            woodTarget.add(ear);
           });
         }
         if (view === 'done') {
-          group.add(makeLabel(`${HEX.qty} incl. 4 windows`, new THREE.Vector3(0, 0.2, h / 2)));
+          woodTarget.add(makeLabel(`${HEX.qty} incl. 4 windows`, new THREE.Vector3(0, 0.2, h / 2)));
         }
       }
 
-      // Dedicated Machine view — no side-by-side crowding with jig
+      // Right region: branded machine schematic (saw steps in Machine/split mode)
       if (showMachine) {
         addMachineVisual(mv);
       }
 
-      const grid = new THREE.GridHelper(3, 12, 0x2a3140, 0x1a1e26);
+      const grid = new THREE.GridHelper(4.5, 18, 0x2a3140, 0x1a1e26);
       grid.position.y = -0.02;
       group.add(grid);
+
+      const chrome = document.getElementById('splitChrome');
+      if (split) {
+        chrome.hidden = false;
+        const brand = (mv || '').startsWith('miter') ? 'makita' : 'dewalt';
+        chrome.classList.toggle('makita', brand === 'makita');
+      } else {
+        chrome.hidden = true;
+        chrome.classList.remove('makita');
+      }
     }
 
     function setMachineSetup() {
@@ -888,8 +970,12 @@
       setCutList();
       rebuild();
       if (saw && vizMode === 'machine') {
-        camera.position.set(1.8, 1.35, 2.4);
-        controls.target.set(0, 0.25, 0);
+        // Frame left materials + right machine
+        camera.position.set(0.2, 1.65, 3.55);
+        controls.target.set(0.05, 0.22, 0);
+      } else if (saw && vizMode === 'wood') {
+        camera.position.set(-0.6, 1.3, 2.6);
+        controls.target.set(-1.0, 0.2, 0);
       }
     }
 
