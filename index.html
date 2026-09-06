@@ -97,6 +97,9 @@
     // Equal sides 1155 mm (3'-9 7/16"), base 1130 mm (3'-8 1/2")
     const HEX = {
       a: 1155, b: 1155, c: 1130,
+      aIn: "3'-9 7/16\"",
+      bIn: "3'-9 7/16\"",
+      cIn: "3'-8 1/2\"",
       apex: 31.4, base: 29.3,
       name: 'Hex',
       qty: 73
@@ -104,9 +107,24 @@
     const STRUT_H = 38;   // 1½"
     const STOCK_W = 70;   // 2¾" after rip half of 2×6
     const STRUT_W = 33;   // 1 5/16" finished face (PDF p7)
+    const STRUT_H_IN = '1½"';
+    const STOCK_W_IN = '2¾"';
+    const STRUT_W_IN = '1 5/16"';
     const BEVEL_DEG = 6.5;
     const BEVEL = BEVEL_DEG * Math.PI / 180;
     const BLANK_LEN = 1219; // ~4' handling blanks
+    const BLANK_LEN_IN = "4'-0\"";
+    const FULL_2X6_W = 140; // full 2×6 section before rip (~5½")
+    // Locked plan imperial strings — do not derive these via mm→sixteenths
+    const PLAN_IN = new Map([
+      [HEX.a, HEX.aIn],
+      [HEX.b, HEX.bIn],
+      [HEX.c, HEX.cIn],
+      [STRUT_H, STRUT_H_IN],
+      [STOCK_W, STOCK_W_IN],
+      [STRUT_W, STRUT_W_IN],
+      [BLANK_LEN, BLANK_LEN_IN]
+    ]);
 
     const STEPS = [
       {
@@ -130,13 +148,13 @@
       {
         id: 3,
         title: '4. Lay out hex jig',
-        text: () => `¾" plywood larger than the panel. Draw a straight base; mark ends ${fmt(HEX.c)} apart. From each mark, swing arcs at ${fmt(HEX.a)} (compass or screw+string). Apex = arc intersection. Connect the three points.`,
+        text: () => `${units === 'mm' ? '19 mm' : '¾"'} plywood larger than the panel. Draw a straight base; mark ends ${fmt(HEX.c)} apart. From each mark, swing arcs at ${fmt(HEX.a)} (compass or screw+string). Apex = arc intersection. Connect the three points.`,
         view: 'jig'
       },
       {
         id: 4,
         title: '5. Rip 6.5° bevel',
-        text: () => `On the DEWALT DWE7492: rip a ${BEVEL_DEG}° bevel on one long edge. Both halves same size; keep the first strut as fence/template. Bevel faces outward. Stock ${fmt(STOCK_W)} → finished ${fmt(STRUT_W)} face (PDF p7: ${fmt(STRUT_H)} × ${fmt(STRUT_W)} + ${BEVEL_DEG}°). Bevel scale: EU 90°=square → set ~83.5° for ${BEVEL_DEG}° off square; if your scale is 0–45° from vertical, set ${BEVEL_DEG}° directly.`,
+        text: () => `On the DEWALT DWE7492: matched bevel-rip (second rip) a ${BEVEL_DEG}° bevel on one long edge. The ${BEVEL_DEG}° sets the taper only; set the fence so finished face width is ${fmt(STRUT_W)} (PDF p7) — ${fmt(STRUT_H)}×${fmt(STOCK_W)} → ${fmt(STRUT_H)}×${fmt(STRUT_W)} comes from that fence setting, not from the angle alone. Both halves same size; keep the first strut as fence/template. Bevel faces outward. Bevel scale: EU 90°=square → set ~83.5° for ${BEVEL_DEG}° off square; if your scale is 0–45° from vertical, set ${BEVEL_DEG}° directly.`,
         view: 'bevel'
       },
       {
@@ -215,6 +233,7 @@
 
     function fmt(mm) {
       if (units === 'mm') return `${mm} mm`;
+      if (PLAN_IN.has(mm)) return PLAN_IN.get(mm);
       const inches = mm / 25.4;
       const ft = Math.floor(inches / 12 + 1e-9);
       let inch = inches - ft * 12;
@@ -223,10 +242,17 @@
       let num = Math.round((sixteenths - whole) * 16);
       let den = 16;
       if (num === 16) { num = 0; }
+      // Avoid invalid feet-inches like 3'-12"
+      if (whole === 12) return `${ft + 1}'-0"`;
       const g = num ? gcd(num, den) : 1;
       const fracStr = num ? ` ${num / g}/${den / g}` : '';
       if (ft) return `${ft}'-${whole}${fracStr}"`;
       return `${whole}${fracStr}"`;
+    }
+
+    function planDual(mm, inStr) {
+      if (units === 'mm') return `${mm} mm (${inStr})`;
+      return `${inStr} (${mm} mm)`;
     }
 
     function triangleHeight(a, b, c) {
@@ -322,13 +348,13 @@
       if (view === 'blanks') {
         for (let i = 0; i < 3; i++) {
           const blank = new THREE.Mesh(
-            new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, BLANK_LEN / 1000),
+            new THREE.BoxGeometry(FULL_2X6_W / 1000, STRUT_H / 1000, BLANK_LEN / 1000),
             woodMat
           );
-          blank.position.set((i - 1) * 0.12, STRUT_H / 2000, 0);
+          blank.position.set((i - 1) * 0.22, STRUT_H / 2000, 0);
           group.add(blank);
         }
-        group.add(makeLabel(`blank ~${fmt(BLANK_LEN)}`, new THREE.Vector3(0, 0.1, 0.5)));
+        group.add(makeLabel(`2×6 blank ~${fmt(BLANK_LEN)}`, new THREE.Vector3(0, 0.1, 0.5)));
         group.add(makeLabel(`× ${HEX.qty * 3} struts`, new THREE.Vector3(0, 0.1, -0.5)));
       }
 
@@ -443,6 +469,7 @@
         `Hex panels: ${HEX.qty} including 4 windows`,
         `Struts total: ${HEX.qty * 3}`,
         `Blank length: ~${fmt(BLANK_LEN)} (longest side ${fmt(HEX.a)})`,
+        `Finished long-point: ${HEX.qty * 2} × side ${planDual(HEX.a, HEX.aIn)} + ${HEX.qty} × base ${planDual(HEX.c, HEX.cIn)}`,
         `Per panel sides: a=${fmt(HEX.a)}  b=${fmt(HEX.b)}  c=${fmt(HEX.c)}`,
         `First-end miters: ${HEX.qty * 2} × ${HEX.base}° + ${HEX.qty} × ${HEX.apex}°`,
         `Cross-section: ${fmt(STRUT_H)} × ${fmt(STOCK_W)} stock → ${fmt(STRUT_H)} × ${fmt(STRUT_W)} + ${BEVEL_DEG}°`,
