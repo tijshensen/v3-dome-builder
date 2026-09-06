@@ -21,6 +21,31 @@ ES modules need a local server:
 npx serve .
 ```
 
+## Assembly data
+
+Locked panel constants and 3v 5/8 face topology for the Assembler (Dome - Assembler):
+
+| Path | Purpose |
+|------|---------|
+| [`panel/panel-specs.js`](panel/panel-specs.js) | **Single source of truth** for HEX / PENT / DOOR dims, counts, miters, strut stock |
+| [`panel/panel-map-3v-5-8.json`](panel/panel-map-3v-5-8.json) | Generated face topology (vertices, edges, neighbors, hex/pent/doorHalf) |
+
+Assembler must import specs — do **not** copy numbers:
+
+```js
+import {
+  HEX, PENT, DOOR, DOOR_LH, DOOR_RH, doorHalf,
+  CHORD, META, STRUT_H, STRUT_W, STOCK_W, BEVEL_DEG,
+  PLAN_IN, PANEL_MAP_URL, loadPanelMap
+} from './panel/panel-specs.js';
+
+const map = await loadPanelMap(); // or fetch(PANEL_MAP_URL)
+```
+
+- Face map: Class I frequency-3 geodesic, Z-up, 5/8 truncate (`centroid_z >= -0.25·R`), scaled so B≈1130 mm. Classic 75 hex + 30 pent → after door cuts **73 hex + 30 pent + 4 doorHalf**. Window IDs are heuristic; PDF section labels not mapped.
+- Regenerate map: `python3 scripts/generate_panel_map.py`
+- Hex shop guide (`index.html`) imports specs only — fabrication UX frozen.
+
 ## Follow-ups
 
 Pent/Door polish, full-dome view, BOM export, URL state, offline Three.js, base/pony/door components.

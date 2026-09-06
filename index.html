@@ -92,39 +92,20 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+    import {
+      HEX,
+      STRUT_H,
+      STOCK_W,
+      STRUT_W,
+      BEVEL_DEG,
+      BEVEL_RAD,
+      BLANK_LEN,
+      FULL_2X6_W,
+      PLAN_IN
+    } from './panel/panel-specs.js';
 
-    // Locked Hex from Trillium 18' 5/8 3v PDF p5 + cross-section p7
-    // Equal sides 1155 mm (3'-9 7/16"), base 1130 mm (3'-8 1/2")
-    const HEX = {
-      a: 1155, b: 1155, c: 1130,
-      aIn: "3'-9 7/16\"",
-      bIn: "3'-9 7/16\"",
-      cIn: "3'-8 1/2\"",
-      apex: 31.4, base: 29.3,
-      name: 'Hex',
-      qty: 73
-    };
-    const STRUT_H = 38;   // 1½"
-    const STOCK_W = 70;   // 2¾" after rip half of 2×6
-    const STRUT_W = 33;   // 1 5/16" finished face (PDF p7)
-    const STRUT_H_IN = '1½"';
-    const STOCK_W_IN = '2¾"';
-    const STRUT_W_IN = '1 5/16"';
-    const BEVEL_DEG = 6.5;
-    const BEVEL = BEVEL_DEG * Math.PI / 180;
-    const BLANK_LEN = 1219; // ~4' handling blanks
-    const BLANK_LEN_IN = "4'-0\"";
-    const FULL_2X6_W = 140; // full 2×6 section before rip (~5½")
-    // Locked plan imperial strings — do not derive these via mm→sixteenths
-    const PLAN_IN = new Map([
-      [HEX.a, HEX.aIn],
-      [HEX.b, HEX.bIn],
-      [HEX.c, HEX.cIn],
-      [STRUT_H, STRUT_H_IN],
-      [STOCK_W, STOCK_W_IN],
-      [STRUT_W, STRUT_W_IN],
-      [BLANK_LEN, BLANK_LEN_IN]
-    ]);
+    // Locked dims live in panel/panel-specs.js (single source of truth).
+    const BEVEL = BEVEL_RAD;
 
     const STEPS = [
       {
