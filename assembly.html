@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trillium 5/8 3v — Panel shell assembly</title>
+  <link rel="stylesheet" href="./assembly/assembly.css" />
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="ui">
+    <h1>Trillium 5/8 3v — Panel shell assembly</h1>
+    <p class="sub">Milestone 1 · hex / pent / doorHalf / windows</p>
+    <div class="row">
+      <button id="uIN" class="active" type="button">in</button>
+      <button id="uMM" type="button">mm</button>
+      <button id="btnReset" type="button">Reset view</button>
+    </div>
+    <h2>Filters</h2>
+    <div class="row" id="filters">
+      <button type="button" data-filter="hex" class="active">Hex</button>
+      <button type="button" data-filter="pent" class="active">Pent</button>
+      <button type="button" data-filter="window" class="active">Windows</button>
+      <button type="button" data-filter="doorHalf" class="active">DoorHalf</button>
+    </div>
+    <h2>Assembly sequence</h2>
+    <div class="row" id="steps"></div>
+    <div class="navrow">
+      <button id="btnPrev" type="button">← Prev</button>
+      <span class="spacer" id="stepLabel">1 / 6</span>
+      <button id="btnNext" type="button">Next →</button>
+    </div>
+    <div id="ringNav" class="ring-nav" hidden></div>
+    <div class="dims" id="stepBody"></div>
+    <h2>Selected panel</h2>
+    <div class="cutbox" id="detail">Click a face for id, type, neighbors, edge chords.</div>
+    <div class="hint">
+      Drag orbit · scroll zoom · right-drag pan<br>
+      <span class="legend"><span style="background:#3d8bfd"></span>hex</span>
+      <span class="legend"><span style="background:#f0a202"></span>pent</span>
+      <span class="legend"><span style="background:#7dcea0"></span>window</span>
+      <span class="legend"><span style="background:#c45c8a"></span>doorHalf</span><br>
+      Map is Z-up → display converts to Three.js Y-up (<code>(x,y,z)→(x,z,−y)</code>).<br>
+      Sequence: crown → outward rings → door halves. Work using PDF exploded view / component list.<br>
+      Rings = BFS distance from apex faces (topology). Map radius is approximate generated scale vs plan 18′ footprint.<br>
+      Window face ids are provisional (PDF section labels not mapped).<br>
+      <a href="./index.html">Hex shop (fabrication)</a>
+    </div>
+  </div>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="./assembly/assembly.js"></script>
+</body>
+</html>

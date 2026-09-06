@@ -46,6 +46,30 @@ const map = await loadPanelMap(); // or fetch(PANEL_MAP_URL)
 - Regenerate map: `python3 scripts/generate_panel_map.py`
 - Hex shop guide (`index.html`) imports specs only — fabrication UX frozen.
 
+
+## Assembly guide (Milestone 1)
+
+Interactive **full panel-shell** viewer (hex + pent + doorHalf + windows). Separate from Hex fabrication.
+
+```bash
+npx serve .
+```
+
+Open [`assembly.html`](assembly.html).
+
+| Path | Purpose |
+|------|---------|
+| [`assembly.html`](assembly.html) | Assembly UI shell |
+| [`assembly/assembly.js`](assembly/assembly.js) | Three.js viewer + sequence |
+| [`assembly/assembly.css`](assembly/assembly.css) | Dark shop styles |
+
+- Imports dims/counts from [`panel/panel-specs.js`](panel/panel-specs.js); loads topology via `loadPanelMap()` — no duplicated dim tables.
+- Map is **Z-up**; display converts to Three.js **Y-up** with `(x,y,z)->(x,z,-y)`.
+- **doorHalf** LH/RH placed from TPM-approved map edges (DOOR a/b/c).
+- Window face ids are **provisional** (PDF section labels not mapped).
+- Sequence: overview -> apex/crown -> ring-by-ring -> door halves -> windows -> fit-check.
+- Hex shop fabrication steps remain in [`index.html`](index.html).
+
 ## Follow-ups
 
 Pent/Door polish, full-dome view, BOM export, URL state, offline Three.js, base/pony/door components.

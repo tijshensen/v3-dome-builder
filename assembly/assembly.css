@@ -1,0 +1,52 @@
+/* Assembly guide — matches Hex shop dark aesthetic */
+:root {
+  --bg: #121418;
+  --panel: #1c2028;
+  --line: #2e3542;
+  --text: #e8eaed;
+  --muted: #9aa3b2;
+  --hex: #3d8bfd;
+  --pent: #f0a202;
+  --window: #7dcea0;
+  --door: #c45c8a;
+  --accent: #7dcea0;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+#c { display: block; width: 100%; height: 100%; }
+.ui {
+  position: absolute; top: 12px; left: 12px; width: min(400px, calc(100% - 24px));
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+  backdrop-filter: blur(8px); max-height: calc(100% - 24px); overflow: auto;
+}
+h1 { font-size: 15px; margin: 0 0 4px; font-weight: 650; }
+.sub { margin: 0 0 8px; color: var(--muted); font-size: 12px; }
+h2 { font-size: 12px; margin: 12px 0 6px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.row { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+button {
+  background: #2a3140; color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit;
+}
+button:hover:not(:disabled) { border-color: #4a5568; }
+button.active { background: #3a5a8a; border-color: var(--hex); }
+button:disabled { opacity: 0.35; cursor: not-allowed; }
+.step { width: 100%; text-align: left; font-size: 12px; padding: 5px 8px; }
+.dims { color: var(--muted); font-size: 12px; white-space: pre-wrap; margin: 6px 0 0; }
+.hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+.hint a { color: var(--accent); }
+.hint code { font-size: 11px; color: #c8d0dc; }
+.legend span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.cutbox {
+  background: #161a22; border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 10px; font-size: 12px; color: var(--muted); white-space: pre-wrap;
+  margin-top: 4px;
+}
+.navrow { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
+.navrow .spacer { flex: 1; color: var(--muted); font-size: 12px; text-align: center; }
+.cutbox strong { color: var(--text); font-weight: 600; }
+
+.ring-nav { margin: 6px 0 2px; }
+.ring-label { color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+button.ring { font-size: 11px; padding: 4px 8px; }
+button.ring.active { background: #3a5a8a; border-color: var(--hex); }
