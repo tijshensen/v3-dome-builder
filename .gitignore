@@ -1,0 +1,17 @@
+.DS_Store
+Thumbs.db
+*.log
+.node_modules/
+node_modules/
+.dist/
+dist/
+.cache/
+*.swp
+*~
+._*
+ok.txt
+_*.html
+_*.js
+_*.py
+_*.json
+_*.txt

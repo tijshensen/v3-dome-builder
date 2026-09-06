@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Trillium 5/8 3v — Hex panel frames</title>
+  <style>
+    :root {
+      --bg: #121418;
+      --panel: #1c2028;
+      --line: #2e3542;
+      --text: #e8eaed;
+      --muted: #9aa3b2;
+      --hex: #3d8bfd;
+      --pent: #f0a202;
+      --wood: #c48a4a;
+      --accent: #7dcea0;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+    #c { display: block; width: 100%; height: 100%; }
+    .ui {
+      position: absolute; top: 12px; left: 12px; width: min(380px, calc(100% - 24px));
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+      backdrop-filter: blur(8px); max-height: calc(100% - 24px); overflow: auto;
+    }
+    h1 { font-size: 15px; margin: 0 0 8px; font-weight: 650; }
+    h2 { font-size: 12px; margin: 12px 0 6px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .row { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+    button {
+      background: #2a3140; color: var(--text); border: 1px solid var(--line);
+      border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit;
+    }
+    button:hover:not(:disabled) { border-color: #4a5568; }
+    button.active { background: #3a5a8a; border-color: var(--hex); }
+    button.secondary { opacity: 0.45; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+    .step { width: 100%; text-align: left; font-size: 12px; padding: 5px 8px; }
+    .dims { color: var(--muted); font-size: 12px; white-space: pre-wrap; margin: 6px 0 0; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    .hint a { color: var(--accent); }
+    .legend span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+    .cutbox {
+      background: #161a22; border: 1px solid var(--line); border-radius: 8px;
+      padding: 8px 10px; font-size: 12px; color: var(--muted); white-space: pre-wrap;
+      margin-top: 4px;
+    }
+    .navrow { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
+    .navrow .spacer { flex: 1; color: var(--muted); font-size: 12px; text-align: center; }
+    .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: #2a3140; color: var(--muted); margin-left: 4px; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="ui">
+    <h1>Trillium 5/8 3v — Hex panel frames</h1>
+    <div class="row">
+      <button id="btnHex" class="active" type="button">Hex ×73</button>
+      <button id="btnPent" class="secondary" type="button" disabled title="Pent polish paused until Hex passes review">Pent ×30</button>
+      <button id="btnDoor" class="secondary" type="button" disabled title="Door polish paused until Hex passes review">Door half</button>
+    </div>
+    <div class="row">
+      <button id="uIN" class="active" type="button">in</button>
+      <button id="uMM" type="button">mm</button>
+      <button id="btnReset" type="button">Reset view</button>
+    </div>
+    <div class="row" id="steps"></div>
+    <div class="dims" id="dims"></div>
+    <h2>Hex cut counts</h2>
+    <div class="cutbox" id="cutlist"></div>
+    <div class="hint">
+      Drag orbit · scroll zoom · right-drag pan<br>
+      <span class="legend"><span style="background:#c48a4a"></span>strut</span>
+      <span class="legend"><span style="background:#5b3a1e"></span>6.5° bevel</span>
+      <span class="legend"><span style="background:#7dcea0"></span>jig</span><br>
+      Steps follow <a href="https://youtu.be/Sl9fEp-27EM" target="_blank" rel="noopener">this panel-build video</a>
+      + Trillium plan dimensions (PDF p5 / cross-section p7).
+      <span class="badge">Hex review</span>
+    </div>
+  </div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+    // Locked Hex from Trillium 18' 5/8 3v PDF p5 + cross-section p7
+    // Equal sides 1155 mm (3'-9 7/16"), base 1130 mm (3'-8 1/2")
+    const HEX = {
+      a: 1155, b: 1155, c: 1130,
+      apex: 31.4, base: 29.3,
+      name: 'Hex',
+      qty: 73
+    };
+    const STRUT_H = 38;   // 1½"
+    const STOCK_W = 70;   // 2¾" after rip half of 2×6
+    const STRUT_W = 33;   // 1 5/16" finished face (PDF p7)
+    const BEVEL_DEG = 6.5;
+    const BEVEL = BEVEL_DEG * Math.PI / 180;
+    const BLANK_LEN = 1219; // ~4' handling blanks
+
+    const STEPS = [
+      {
+        id: 0,
+        title: '1. Cut blanks',
+        text: () => `Longest hex side is ${fmt(HEX.a)}. Cut strut blanks ~${fmt(BLANK_LEN)} for handling. Batch: ${HEX.qty} panels × 3 = ${HEX.qty * 3} strut blanks.`,
+        view: 'blanks'
+      },
+      {
+        id: 1,
+        title: '2. Rip stock',
+        text: () => `On the DEWALT DWE7492 table saw: rip 2×6 in half → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}. Keep pairs matched so both halves stay the same size. Rip capacity is fine for ~${fmt(BLANK_LEN)} blanks.`,
+        view: 'stock'
+      },
+      {
+        id: 2,
+        title: '3. Optional finish',
+        text: () => `Optional (video workflow): finish or stain stock before the final bevel rip so you coat the wide faces while they are still flat.`,
+        view: 'stock'
+      },
+      {
+        id: 3,
+        title: '4. Lay out hex jig',
+        text: () => `¾" plywood larger than the panel. Draw a straight base; mark ends ${fmt(HEX.c)} apart. From each mark, swing arcs at ${fmt(HEX.a)} (compass or screw+string). Apex = arc intersection. Connect the three points.`,
+        view: 'jig'
+      },
+      {
+        id: 4,
+        title: '5. Rip 6.5° bevel',
+        text: () => `On the DEWALT DWE7492: rip a ${BEVEL_DEG}° bevel on one long edge. Both halves same size; keep the first strut as fence/template. Bevel faces outward. Stock ${fmt(STOCK_W)} → finished ${fmt(STRUT_W)} face (PDF p7: ${fmt(STRUT_H)} × ${fmt(STRUT_W)} + ${BEVEL_DEG}°). Bevel scale: EU 90°=square → set ~83.5° for ${BEVEL_DEG}° off square; if your scale is 0–45° from vertical, set ${BEVEL_DEG}° directly.`,
+        view: 'bevel'
+      },
+      {
+        id: 5,
+        title: '6. Finish jig stops',
+        text: () => `Place struts wide-face down on the jig lines. Add backing stops so each strut edge just splits the layout line.`,
+        view: 'jigStops'
+      },
+      {
+        id: 6,
+        title: '7. Initial miters',
+        text: () => `On the MAKITA LS1019L (dual-bevel slider + laser): simple miters (not compound), long-point to long-point, cut close to the end. Per panel: two @ ${HEX.base}° (bases) + one @ ${HEX.apex}° (apex), off 90°. Miter 0–60° covers both; the ~31.6° stop is close — dial fine to ${HEX.apex}° with scale/laser, do not trust the stop alone. Use a stop block for repeat Hex blanks. First-end batch: ${HEX.qty * 2} × ${HEX.base}° and ${HEX.qty} × ${HEX.apex}°. Check reciprocal overlap on the jig.`,
+        view: 'miters'
+      },
+      {
+        id: 7,
+        title: '8. Compound trim ears',
+        text: () => `Prefer the MAKITA LS1019L for compound ear trim: same miter + ${BEVEL_DEG}° bevel (dual bevel 0–48° L/R — no flip for opposite bevels). Use a stop block. Hand saw only if needed. Check fit every 5–10 struts.`,
+        view: 'ears'
+      },
+      {
+        id: 8,
+        title: '9. Assemble',
+        text: () => `Predrill if needed; two screws per corner; bevels out. QA: a symmetrical hex should flip on the jig and sit snug both ways.`,
+        view: 'assemble'
+      },
+      {
+        id: 9,
+        title: '10. Done / counts',
+        text: () => `Panel complete. Full dome: ${HEX.qty} hex panels including 4 windows. Sides ${fmt(HEX.a)} / ${fmt(HEX.b)} / base ${fmt(HEX.c)}; miters ${HEX.apex}° apex + ${HEX.base}° / ${HEX.base}°.`,
+        view: 'done'
+      }
+    ];
+
+    let step = 0;
+    let units = 'in'; // imperial primary for Hex review
+
+    const canvas = document.getElementById('c');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0';
+    labelRenderer.domElement.style.left = '0';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+    document.body.appendChild(labelRenderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x121418);
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 50);
+    camera.position.set(1.6, 1.2, 2.2);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(0, 0.35, 0);
+
+    scene.add(new THREE.HemisphereLight(0xc8d4e8, 0x2a2118, 1.1));
+    const sun = new THREE.DirectionalLight(0xfff3e0, 1.4);
+    sun.position.set(2, 3, 2);
+    sun.castShadow = true;
+    scene.add(sun);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+
+    const group = new THREE.Group();
+    scene.add(group);
+
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0xc48a4a, roughness: 0.55, metalness: 0.02 });
+    const bevelMat = new THREE.MeshStandardMaterial({ color: 0x5b3a1e, roughness: 0.5 });
+    const jigMat = new THREE.MeshStandardMaterial({ color: 0x3d5c45, roughness: 0.8 });
+    const markMat = new THREE.LineBasicMaterial({ color: 0x7dcea0 });
+    const stainMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.45, metalness: 0.05 });
+
+    function gcd(a, b) { return b ? gcd(b, a % b) : a; }
+
+    function fmt(mm) {
+      if (units === 'mm') return `${mm} mm`;
+      const inches = mm / 25.4;
+      const ft = Math.floor(inches / 12 + 1e-9);
+      let inch = inches - ft * 12;
+      const sixteenths = Math.round(inch * 16) / 16;
+      const whole = Math.floor(sixteenths + 1e-9);
+      let num = Math.round((sixteenths - whole) * 16);
+      let den = 16;
+      if (num === 16) { num = 0; }
+      const g = num ? gcd(num, den) : 1;
+      const fracStr = num ? ` ${num / g}/${den / g}` : '';
+      if (ft) return `${ft}'-${whole}${fracStr}"`;
+      return `${whole}${fracStr}"`;
+    }
+
+    function triangleHeight(a, b, c) {
+      const s = (a + b + c) / 2;
+      const area = Math.sqrt(Math.max(0, s * (s - a) * (s - b) * (s - c)));
+      return (2 * area) / c;
+    }
+
+    function makeLabel(text, pos) {
+      const el = document.createElement('div');
+      el.textContent = text;
+      el.style.cssText = 'background:#1c2028cc;color:#e8eaed;padding:2px 6px;border-radius:4px;font:11px/1.2 system-ui;white-space:nowrap;border:1px solid #2e3542';
+      const obj = new CSS2DObject(el);
+      obj.position.copy(pos);
+      return obj;
+    }
+
+    function strutMesh(lengthMm, faceWmm = STRUT_W, mat = woodMat) {
+      const L = lengthMm / 1000;
+      const h = STRUT_H / 1000;
+      const w = faceWmm / 1000;
+      const taper = Math.tan(BEVEL) * h;
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0);
+      shape.lineTo(w, 0);
+      shape.lineTo(Math.max(0.001, w - taper), h);
+      shape.lineTo(0, h);
+      shape.closePath();
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: L, bevelEnabled: false });
+      geo.translate(-w / 2, 0, -L / 2);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      return mesh;
+    }
+
+    function placeStrut(p1, p2, up, faceWmm = STRUT_W) {
+      const a = p1.clone();
+      const b = p2.clone();
+      const dir = new THREE.Vector3().subVectors(b, a);
+      const len = dir.length();
+      const mid = a.clone().add(b).multiplyScalar(0.5);
+      const mesh = strutMesh(len * 1000, faceWmm);
+      mesh.position.copy(mid);
+      const z = dir.clone().normalize();
+      const x = new THREE.Vector3().crossVectors(up, z).normalize();
+      const y = new THREE.Vector3().crossVectors(z, x).normalize();
+      mesh.setRotationFromMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+      mesh.position.add(y.clone().multiplyScalar(STRUT_H / 2000));
+      return mesh;
+    }
+
+    function hexPoints() {
+      const a = HEX.a / 1000, b = HEX.b / 1000, c = HEX.c / 1000;
+      const h = triangleHeight(HEX.a, HEX.b, HEX.c) / 1000;
+      const pA = new THREE.Vector3(-c / 2, 0, 0);
+      const pB = new THREE.Vector3(c / 2, 0, 0);
+      const xApex = (a * a - b * b + c * c) / (2 * c);
+      const pC = new THREE.Vector3(-c / 2 + xApex, 0, h);
+      return { pA, pB, pC, h, c };
+    }
+
+    function addJig(pA, pB, pC, h, c, withStops) {
+      const jig = new THREE.Mesh(new THREE.BoxGeometry(c + 0.2, 0.012, h + 0.2), jigMat);
+      jig.position.set(0, -0.008, h / 2);
+      jig.receiveShadow = true;
+      group.add(jig);
+      const outline = new THREE.BufferGeometry().setFromPoints([pA, pB, pC, pA]);
+      const line = new THREE.Line(outline, markMat);
+      line.position.y = 0.002;
+      group.add(line);
+      group.add(makeLabel(fmt(HEX.c), new THREE.Vector3(0, 0.05, -0.05)));
+      group.add(makeLabel(fmt(HEX.a), new THREE.Vector3((pA.x + pC.x) / 2 - 0.08, 0.05, (pA.z + pC.z) / 2)));
+      group.add(makeLabel(fmt(HEX.b), new THREE.Vector3((pB.x + pC.x) / 2 + 0.08, 0.05, (pB.z + pC.z) / 2)));
+      if (withStops) {
+        const stopMat = new THREE.MeshStandardMaterial({ color: 0x2a4a35, roughness: 0.7 });
+        [[pA, pB], [pB, pC], [pC, pA]].forEach(([u, v]) => {
+          const mid = u.clone().add(v).multiplyScalar(0.5);
+          const stop = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 0.08), stopMat);
+          stop.position.copy(mid);
+          stop.position.y = 0.01;
+          group.add(stop);
+        });
+      }
+    }
+
+    function rebuild() {
+      group.clear();
+      const view = STEPS[step].view;
+      const { pA, pB, pC, h, c } = hexPoints();
+      const up = new THREE.Vector3(0, 1, 0);
+
+      if (view === 'blanks') {
+        for (let i = 0; i < 3; i++) {
+          const blank = new THREE.Mesh(
+            new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, BLANK_LEN / 1000),
+            woodMat
+          );
+          blank.position.set((i - 1) * 0.12, STRUT_H / 2000, 0);
+          group.add(blank);
+        }
+        group.add(makeLabel(`blank ~${fmt(BLANK_LEN)}`, new THREE.Vector3(0, 0.1, 0.5)));
+        group.add(makeLabel(`× ${HEX.qty * 3} struts`, new THREE.Vector3(0, 0.1, -0.5)));
+      }
+
+      if (view === 'stock') {
+        const twoBySix = new THREE.Mesh(
+          new THREE.BoxGeometry(0.14, STRUT_H / 1000, 1.0),
+          woodMat
+        );
+        twoBySix.position.set(-0.5, STRUT_H / 2000, 0);
+        group.add(twoBySix);
+        group.add(makeLabel('2×6', new THREE.Vector3(-0.5, 0.08, 0.4)));
+
+        const mat = step === 2 ? stainMat : woodMat;
+        [-0.05, 0.12].forEach((x, i) => {
+          const half = new THREE.Mesh(
+            new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 1.0),
+            mat
+          );
+          half.position.set(x, STRUT_H / 2000, 0);
+          group.add(half);
+          group.add(makeLabel(i === 0 ? `${fmt(STRUT_H)}×${fmt(STOCK_W)}` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
+        });
+      }
+
+      if (view === 'bevel') {
+        const stock = new THREE.Mesh(
+          new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 1.1),
+          woodMat
+        );
+        stock.position.set(-0.35, STRUT_H / 2000, 0);
+        group.add(stock);
+        group.add(makeLabel(`stock ${fmt(STOCK_W)}`, new THREE.Vector3(-0.35, 0.08, 0.45)));
+
+        const finished = strutMesh(1100, STRUT_W);
+        finished.rotation.x = -Math.PI / 2;
+        finished.position.set(0.35, 0, 0);
+        group.add(finished);
+        const bevel = new THREE.Mesh(
+          new THREE.BoxGeometry(0.005, STRUT_H / 1000, 1.1),
+          bevelMat
+        );
+        bevel.position.set(0.35 + STRUT_W / 2000, STRUT_H / 2000, 0);
+        group.add(bevel);
+        group.add(makeLabel(`${BEVEL_DEG}° → ${fmt(STRUT_H)}×${fmt(STRUT_W)}`, new THREE.Vector3(0.35, 0.08, 0.45)));
+      }
+
+      if (view === 'jig' || view === 'jigStops') {
+        addJig(pA, pB, pC, h, c, view === 'jigStops');
+        if (view === 'jig') {
+          group.add(makeLabel('arc ∩ = apex', pC.clone().add(new THREE.Vector3(0, 0.08, 0.05))));
+        } else {
+          const s1 = placeStrut(pA, pB, up);
+          const s2 = placeStrut(pB, pC, up);
+          const s3 = placeStrut(pC, pA, up);
+          group.add(s1, s2, s3);
+        }
+      }
+
+      if (view === 'miters') {
+        addJig(pA, pB, pC, h, c, false);
+        const s1 = placeStrut(pA, pB, up);
+        const s2 = placeStrut(pB, pC, up);
+        const s3 = placeStrut(pC, pA, up);
+        s1.position.z -= 0.22;
+        s2.position.x += 0.22;
+        s3.position.x -= 0.22;
+        group.add(s1, s2, s3);
+        group.add(makeLabel(`${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        group.add(makeLabel(`${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.06, 0.08, 0))));
+        group.add(makeLabel(`${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.06, 0.08, 0))));
+      }
+
+      if (view === 'ears' || view === 'assemble' || view === 'done') {
+        addJig(pA, pB, pC, h, c, view !== 'ears');
+        group.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
+        group.add(makeLabel(`${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        group.add(makeLabel(`${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.06, 0.08, 0))));
+        group.add(makeLabel(`${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.06, 0.08, 0))));
+        group.add(makeLabel(fmt(HEX.c), new THREE.Vector3(0, 0.06, -0.04)));
+        group.add(makeLabel(fmt(HEX.a), new THREE.Vector3((pA.x + pC.x) / 2 - 0.08, 0.06, (pA.z + pC.z) / 2)));
+        group.add(makeLabel(fmt(HEX.b), new THREE.Vector3((pB.x + pC.x) / 2 + 0.08, 0.06, (pB.z + pC.z) / 2)));
+        if (view === 'ears') {
+          [pA, pB, pC].forEach((p) => {
+            const ear = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.05, 4), bevelMat);
+            ear.position.copy(p);
+            ear.position.y = 0.03;
+            group.add(ear);
+          });
+        }
+        if (view === 'done') {
+          group.add(makeLabel(`${HEX.qty} incl. 4 windows`, new THREE.Vector3(0, 0.2, h / 2)));
+        }
+      }
+
+      const grid = new THREE.GridHelper(3, 12, 0x2a3140, 0x1a1e26);
+      grid.position.y = -0.02;
+      group.add(grid);
+    }
+
+    function setDims() {
+      const s = STEPS[step];
+      document.getElementById('dims').textContent =
+        `Hex ×${HEX.qty} including 4 windows\n` +
+        `Sides: ${fmt(HEX.a)} / ${fmt(HEX.b)} / base ${fmt(HEX.c)}\n` +
+        `Miters off 90°: apex ${HEX.apex}° · bases ${HEX.base}° / ${HEX.base}°\n` +
+        `Stock: 2×6 → ${fmt(STRUT_H)} × ${fmt(STOCK_W)} · bevel ${BEVEL_DEG}° → finished ${fmt(STRUT_H)} × ${fmt(STRUT_W)}\n\n` +
+        s.title + '\n' + s.text();
+    }
+
+    function setCutList() {
+      const lines = [
+        `Hex panels: ${HEX.qty} including 4 windows`,
+        `Struts total: ${HEX.qty * 3}`,
+        `Blank length: ~${fmt(BLANK_LEN)} (longest side ${fmt(HEX.a)})`,
+        `Per panel sides: a=${fmt(HEX.a)}  b=${fmt(HEX.b)}  c=${fmt(HEX.c)}`,
+        `First-end miters: ${HEX.qty * 2} × ${HEX.base}° + ${HEX.qty} × ${HEX.apex}°`,
+        `Cross-section: ${fmt(STRUT_H)} × ${fmt(STOCK_W)} stock → ${fmt(STRUT_H)} × ${fmt(STRUT_W)} + ${BEVEL_DEG}°`,
+        `Screws (2×3 corners×panels): ${HEX.qty * 6}`
+      ];
+      document.getElementById('cutlist').textContent = lines.join('\n');
+    }
+
+    function renderSteps() {
+      const wrap = document.getElementById('steps');
+      wrap.innerHTML = '';
+      STEPS.forEach((s) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'step' + (s.id === step ? ' active' : '');
+        b.textContent = s.title;
+        b.onclick = () => { step = s.id; sync(); };
+        wrap.appendChild(b);
+      });
+    }
+
+    function sync() {
+      document.getElementById('uIN').classList.toggle('active', units === 'in');
+      document.getElementById('uMM').classList.toggle('active', units === 'mm');
+      renderSteps();
+      setDims();
+      setCutList();
+      rebuild();
+    }
+
+    document.getElementById('uIN').onclick = () => { units = 'in'; sync(); };
+    document.getElementById('uMM').onclick = () => { units = 'mm'; sync(); };
+    document.getElementById('btnReset').onclick = () => {
+      camera.position.set(1.6, 1.2, 2.2);
+      controls.target.set(0, 0.35, 0);
+    };
+    function resize() {
+      const w = innerWidth, h = innerHeight;
+      renderer.setSize(w, h, false);
+      labelRenderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    addEventListener('resize', resize);
+    resize();
+    sync();
+
+    (function loop() {
+      requestAnimationFrame(loop);
+      controls.update();
+      renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
+    })();
+
+</script>
+</body>
+</html>
