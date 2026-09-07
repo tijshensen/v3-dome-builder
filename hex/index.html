@@ -75,6 +75,17 @@
     .machine-hud li { margin: 2px 0; }
     .vizrow { display: none; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
     .vizrow.show { display: flex; }
+    .hex-meta {
+      margin: 8px 0 0; border: 1px solid var(--line); border-radius: 8px;
+      background: #161a22; padding: 6px 10px; font-size: 12px; color: var(--muted);
+    }
+    .hex-meta summary {
+      cursor: pointer; font-weight: 650; color: var(--text);
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .hex-meta .meta-body { white-space: pre-wrap; margin-top: 6px; }
+    #cutSection[hidden], #machinesetup[hidden] { display: none !important; }
+    #cutSection h2 { margin-top: 8px; }
     .split-chrome {
       /* Full viewport; divider at 50% aligns with world X=0 (MATERIALS | MACHINE). */
       position: absolute; inset: 0; pointer-events: none; z-index: 3;
@@ -126,8 +137,14 @@
     <div class="row" id="steps"></div>
     <div class="dims" id="dims"></div>
     <div class="machinesetup" id="machinesetup" aria-live="polite"></div>
-    <h2>Hex cut counts</h2>
-    <div class="cutbox" id="cutlist"></div>
+    <div id="cutSection">
+      <h2 id="cutHeading">Hex cut counts</h2>
+      <div class="cutbox" id="cutlist"></div>
+    </div>
+    <details class="hex-meta" id="hexMeta">
+      <summary>Hex summary (collapsed)</summary>
+      <div class="meta-body" id="hexMetaBody"></div>
+    </details>
     <div class="hint">
       Drag orbit · scroll zoom · right-drag pan<br>
       <span class="legend"><span style="background:#c48a4a"></span>strut</span>
@@ -185,7 +202,7 @@
       {
         id: 0,
         title: '1. Cut blanks',
-        text: () => `Longest hex side is ${fmt(HEX.a)}. Cut strut blanks ~${fmt(BLANK_LEN)} for handling. Batch: ${HEX.qty} panels × 3 = ${HEX.qty * 3} strut blanks.`,
+        text: () => `Cut strut blanks ~${fmt(BLANK_LEN)} (longest side ${fmt(HEX.a)}). Batch: ${HEX.qty} panels × 3 = ${HEX.qty * 3} blanks.`,
         view: 'blanks',
         machineVisual: 'miterCrosscut',
         machineSetup: {
@@ -200,7 +217,7 @@
       {
         id: 1,
         title: '2. Rip stock',
-        text: () => `On the DEWALT DWE7492 table saw: rip 2×6 in half → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}. Keep pairs matched so both halves stay the same size. Rip capacity is fine for ~${fmt(BLANK_LEN)} blanks.`,
+        text: () => `Rip 2×6 in half → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}. Keep matched pairs. Rip capacity fine for ~${fmt(BLANK_LEN)} blanks.`,
         view: 'stock',
         machineVisual: 'tableRip',
         machineSetup: {
@@ -215,21 +232,18 @@
       {
         id: 2,
         title: '3. Optional finish',
-        text: () => `Optional (video workflow): finish or stain stock before the final bevel rip so you coat the wide faces while they are still flat.`,
+        text: () => `Optional: finish/stain flat faces before the bevel rip.`,
         view: 'stock',
         machineVisual: 'none',
         machineSetup: {
-          machines: () => 'None / hand tools only',
-          settings: () => [
-            'No saw setup for this step',
-            'Finish or stain flat faces before the bevel rip'
-          ]
+          machines: () => '',
+          settings: () => []
         }
       },
       {
         id: 3,
         title: '4. Lay out hex jig',
-        text: () => `${units === 'mm' ? '19 mm' : '¾"'} plywood larger than the panel. Draw a straight base; mark ends ${fmt(HEX.c)} apart. From each mark, swing arcs at ${fmt(HEX.a)} (compass or screw+string). Apex = arc intersection. Connect the three points.`,
+        text: () => `${units === 'mm' ? '19 mm' : '¾"'} plywood > panel. Base marks ${fmt(HEX.c)} apart; arcs at ${fmt(HEX.a)}; apex = arc ∩. Connect the three points.`,
         view: 'jig',
         machineVisual: 'handLayout',
         machineSetup: {
@@ -243,7 +257,7 @@
       {
         id: 4,
         title: '5. Rip 6.5° bevel',
-        text: () => `On the DEWALT DWE7492: matched bevel-rip (second rip) a ${BEVEL_DEG}° bevel on one long edge. The ${BEVEL_DEG}° sets the taper only; set the fence so finished face width is ${fmt(STRUT_W)} (PDF p7) — ${fmt(STRUT_H)}×${fmt(STOCK_W)} → ${fmt(STRUT_H)}×${fmt(STRUT_W)} comes from that fence setting, not from the angle alone. Both halves same size; keep the first strut as fence/template. Bevel faces outward. On this saw’s 0–45° bevel scale (0° = square/vertical), set ${BEVEL_DEG}° directly. (EU 90-based scales only: ~83.5°.)`,
+        text: () => `Matched bevel-rip ${BEVEL_DEG}° on one long edge. Fence for finished face ${fmt(STRUT_W)} (PDF p7): ${fmt(STRUT_H)}×${fmt(STOCK_W)} → ${fmt(STRUT_H)}×${fmt(STRUT_W)}. Keep first strut as template; bevel faces out.`,
         view: 'bevel',
         machineVisual: 'tableBevel',
         machineSetup: {
@@ -259,21 +273,18 @@
       {
         id: 5,
         title: '6. Finish jig stops',
-        text: () => `Place struts wide-face down on the jig lines. Add backing stops so each strut edge just splits the layout line.`,
+        text: () => `Struts wide-face down on jig lines. Backing stops so each edge splits the layout line.`,
         view: 'jigStops',
         machineVisual: 'none',
         machineSetup: {
-          machines: () => 'None / hand tools only',
-          settings: () => [
-            'No saw setup for this step',
-            'Backing stops only — strut edge splits the layout line'
-          ]
+          machines: () => '',
+          settings: () => []
         }
       },
       {
         id: 6,
         title: '7. Initial miters',
-        text: () => `On the MAKITA LS1019L (dual-bevel slider + laser): simple miters (not compound), long-point to long-point, cut close to the end. Per panel: two @ ${HEX.base}° (bases) + one @ ${HEX.apex}° (apex), off 90°. Miter 0–60° covers both; the ~31.6° stop is close — dial fine to ${HEX.apex}° with scale/laser, do not trust the stop alone. Use a stop block for repeat Hex blanks. First-end batch: ${HEX.qty * 2} × ${HEX.base}° and ${HEX.qty} × ${HEX.apex}°. Check reciprocal overlap on the jig.`,
+        text: () => `Simple miters (not compound), long-point to long-point. Per panel: two @ ${HEX.base}° (bases) + one @ ${HEX.apex}° (apex), off 90°. Dial ${HEX.apex}° — do not trust the ~31.6° stop alone. First-end batch: ${HEX.qty * 2} × ${HEX.base}° + ${HEX.qty} × ${HEX.apex}°. Check overlap on the jig.`,
         view: 'miters',
         machineVisual: 'miterSimple',
         machineSetup: {
@@ -289,7 +300,7 @@
       {
         id: 7,
         title: '8. Compound trim ears',
-        text: () => `Prefer the MAKITA LS1019L for compound ear trim: same miter + ${BEVEL_DEG}° bevel (dual bevel 0–48° L/R — no flip for opposite bevels). Use a stop block. Hand saw only if needed. Check fit every 5–10 struts.`,
+        text: () => `Compound ear trim: same miter as step 7 + ${BEVEL_DEG}° bevel. Apex miter ${HEX.apex}° · base miters ${HEX.base}°. Dual bevel L/R — no flip. Stop block; check fit every 5–10 struts.`,
         view: 'ears',
         machineVisual: 'miterCompound',
         machineSetup: {
@@ -304,7 +315,7 @@
       {
         id: 8,
         title: '9. Assemble',
-        text: () => `Predrill if needed; two screws per corner; bevels out. QA: a symmetrical hex should flip on the jig and sit snug both ways.`,
+        text: () => `Predrill if needed; two screws per corner; bevels out. QA: flip on jig — snug both ways.`,
         view: 'assemble',
         machineVisual: 'drill',
         machineSetup: {
@@ -318,15 +329,12 @@
       {
         id: 9,
         title: '10. Done / counts',
-        text: () => `Panel complete. Full dome: ${HEX.qty} hex panels including 4 windows. Sides ${fmt(HEX.a)} / ${fmt(HEX.b)} / base ${fmt(HEX.c)}; miters ${HEX.apex}° apex + ${HEX.base}° / ${HEX.base}°.`,
+        text: () => `Panel complete — final Hex counts below.`,
         view: 'done',
         machineVisual: 'none',
         machineSetup: {
-          machines: () => 'None / no saw',
-          settings: () => [
-            'No saw setup — panel complete',
-            'Brief reminder: DWE7492 for rips/bevel; LS1019L for miters/ears'
-          ]
+          machines: () => '',
+          settings: () => []
         }
       }
     ];
@@ -459,7 +467,7 @@
       return { pA, pB, pC, h, c };
     }
 
-    function addJig(pA, pB, pC, h, c, withStops) {
+    function addJig(pA, pB, pC, h, c, withStops, showSideDims = true) {
       const jig = new THREE.Mesh(new THREE.BoxGeometry(c + 0.2, 0.012, h + 0.2), jigMat);
       jig.position.set(0, -0.008, h / 2);
       jig.receiveShadow = true;
@@ -468,9 +476,11 @@
       const line = new THREE.Line(outline, markMat);
       line.position.y = 0.002;
       woodTarget.add(line);
-      woodTarget.add(makeLabel(fmt(HEX.c), new THREE.Vector3(0, 0.05, -0.05)));
-      woodTarget.add(makeLabel(fmt(HEX.a), new THREE.Vector3((pA.x + pC.x) / 2 - 0.08, 0.05, (pA.z + pC.z) / 2)));
-      woodTarget.add(makeLabel(fmt(HEX.b), new THREE.Vector3((pB.x + pC.x) / 2 + 0.08, 0.05, (pB.z + pC.z) / 2)));
+      if (showSideDims) {
+        woodTarget.add(makeLabel(fmt(HEX.c), new THREE.Vector3(0, 0.05, -0.05)));
+        woodTarget.add(makeLabel(fmt(HEX.a), new THREE.Vector3((pA.x + pC.x) / 2 - 0.08, 0.05, (pA.z + pC.z) / 2)));
+        woodTarget.add(makeLabel(fmt(HEX.b), new THREE.Vector3((pB.x + pC.x) / 2 + 0.08, 0.05, (pB.z + pC.z) / 2)));
+      }
       if (withStops) {
         const stopMat = new THREE.MeshStandardMaterial({ color: 0x2a4a35, roughness: 0.7 });
         [[pA, pB], [pB, pC], [pC, pA]].forEach(([u, v]) => {
@@ -924,7 +934,7 @@
       }
 
       if (showWood && view === 'miters') {
-        addJig(pA, pB, pC, h, c, false);
+        addJig(pA, pB, pC, h, c, false, false);
         const s1 = placeStrut(pA, pB, up);
         const s2 = placeStrut(pB, pC, up);
         const s3 = placeStrut(pC, pA, up);
@@ -932,28 +942,30 @@
         s2.position.x += 0.22;
         s3.position.x -= 0.22;
         woodTarget.add(s1, s2, s3);
-        woodTarget.add(makeLabel(`${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
-        woodTarget.add(makeLabel(`${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.06, 0.08, 0))));
-        woodTarget.add(makeLabel(`${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.06, 0.08, 0))));
+        woodTarget.add(makeLabel(`apex ${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        woodTarget.add(makeLabel(`base ${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.08, 0.08, 0))));
+        woodTarget.add(makeLabel(`base ${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.08, 0.08, 0))));
       }
 
-      if (showWood && (view === 'ears' || view === 'assemble' || view === 'done')) {
-        addJig(pA, pB, pC, h, c, view !== 'ears');
+      if (showWood && view === 'ears') {
+        // Angle-focused compound ears — no full side-length dump
+        addJig(pA, pB, pC, h, c, false, false);
         woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
-        woodTarget.add(makeLabel(`${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
-        woodTarget.add(makeLabel(`${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.06, 0.08, 0))));
-        woodTarget.add(makeLabel(`${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.06, 0.08, 0))));
-        woodTarget.add(makeLabel(fmt(HEX.c), new THREE.Vector3(0, 0.06, -0.04)));
-        woodTarget.add(makeLabel(fmt(HEX.a), new THREE.Vector3((pA.x + pC.x) / 2 - 0.08, 0.06, (pA.z + pC.z) / 2)));
-        woodTarget.add(makeLabel(fmt(HEX.b), new THREE.Vector3((pB.x + pC.x) / 2 + 0.08, 0.06, (pB.z + pC.z) / 2)));
-        if (view === 'ears') {
-          [pA, pB, pC].forEach((p) => {
-            const ear = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.05, 4), bevelMat);
-            ear.position.copy(p);
-            ear.position.y = 0.03;
-            woodTarget.add(ear);
-          });
-        }
+        woodTarget.add(makeLabel(`apex miter ${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        woodTarget.add(makeLabel(`base miter ${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.1, 0.08, 0))));
+        woodTarget.add(makeLabel(`base miter ${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.1, 0.08, 0))));
+        woodTarget.add(makeLabel(`+ ${BEVEL_DEG}° bevel`, new THREE.Vector3(0, 0.14, h / 2)));
+        [pA, pB, pC].forEach((p) => {
+          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.05, 4), bevelMat);
+          ear.position.copy(p);
+          ear.position.y = 0.03;
+          woodTarget.add(ear);
+        });
+      }
+
+      if (showWood && (view === 'assemble' || view === 'done')) {
+        addJig(pA, pB, pC, h, c, true);
+        woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
         if (view === 'done') {
           woodTarget.add(makeLabel(`${HEX.qty} incl. 4 windows`, new THREE.Vector3(0, 0.2, h / 2)));
         }
@@ -986,31 +998,17 @@
       }
     }
 
-    function setMachineSetup() {
-      const s = STEPS[step];
-      const ms = s.machineSetup;
-      const el = document.getElementById('machinesetup');
-      const tools = typeof ms.machines === 'function' ? ms.machines() : ms.machines;
-      const settings = (typeof ms.settings === 'function' ? ms.settings() : ms.settings) || [];
-      const lis = settings.map((line) => `<li>${line}</li>`).join('');
-      el.innerHTML =
-        `<div class="ms-title">Machine setup</div>` +
-        `<div class="ms-tools">${tools}</div>` +
-        (lis ? `<ul>${lis}</ul>` : '');
+    function fullHexSummary() {
+      return [
+        `Hex ×${HEX.qty} including 4 windows`,
+        `Sides: ${fmt(HEX.a)} / ${fmt(HEX.b)} / base ${fmt(HEX.c)}`,
+        `Miters off 90°: apex ${HEX.apex}° · bases ${HEX.base}° / ${HEX.base}°`,
+        `Stock: 2×6 → ${fmt(STRUT_H)} × ${fmt(STOCK_W)} · bevel ${BEVEL_DEG}° → finished ${fmt(STRUT_H)} × ${fmt(STRUT_W)}`
+      ].join('\n');
     }
 
-    function setDims() {
-      const s = STEPS[step];
-      document.getElementById('dims').textContent =
-        `Hex ×${HEX.qty} including 4 windows\n` +
-        `Sides: ${fmt(HEX.a)} / ${fmt(HEX.b)} / base ${fmt(HEX.c)}\n` +
-        `Miters off 90°: apex ${HEX.apex}° · bases ${HEX.base}° / ${HEX.base}°\n` +
-        `Stock: 2×6 → ${fmt(STRUT_H)} × ${fmt(STOCK_W)} · bevel ${BEVEL_DEG}° → finished ${fmt(STRUT_H)} × ${fmt(STRUT_W)}\n\n` +
-        s.title + '\n' + s.text();
-    }
-
-    function setCutList() {
-      const lines = [
+    function fullCutCounts() {
+      return [
         `Hex panels: ${HEX.qty} including 4 windows`,
         `Struts total: ${HEX.qty * 3}`,
         `Blank length: ~${fmt(BLANK_LEN)} (longest side ${fmt(HEX.a)})`,
@@ -1020,7 +1018,94 @@
         `Cross-section: ${fmt(STRUT_H)} × ${fmt(STOCK_W)} stock → ${fmt(STRUT_H)} × ${fmt(STRUT_W)} + ${BEVEL_DEG}°`,
         `Screws (2×3 corners×panels): ${HEX.qty * 6}`
       ];
-      document.getElementById('cutlist').textContent = lines.join('\n');
+    }
+
+    function setPanelVisible(el, on) {
+      if (!el) return;
+      el.hidden = !on;
+    }
+
+    function setMachineSetup() {
+      const s = STEPS[step];
+      const ms = s.machineSetup;
+      const el = document.getElementById('machinesetup');
+      const tools = (typeof ms.machines === 'function' ? ms.machines() : ms.machines) || '';
+      const settings = (typeof ms.settings === 'function' ? ms.settings() : ms.settings) || [];
+      // Optional finish / jig stops / done: drop "Machine setup: None" noise
+      if (!tools && settings.length === 0) {
+        el.innerHTML = '';
+        setPanelVisible(el, false);
+        return;
+      }
+      setPanelVisible(el, true);
+      const title = (!tools || /none/i.test(tools)) ? 'Prep / Staging' : 'Machine setup';
+      const lis = settings.map((line) => `<li>${line}</li>`).join('');
+      el.innerHTML =
+        `<div class="ms-title">${title}</div>` +
+        (tools ? `<div class="ms-tools">${tools}</div>` : '') +
+        (lis ? `<ul>${lis}</ul>` : '');
+    }
+
+    function setDims() {
+      const s = STEPS[step];
+      // Action + that-step text only — full Hex summary lives in collapsed meta
+      document.getElementById('dims').textContent = s.title + '\n' + s.text();
+      document.getElementById('hexMetaBody').textContent = fullHexSummary();
+    }
+
+    function setCutList() {
+      const s = STEPS[step];
+      const sec = document.getElementById('cutSection');
+      const box = document.getElementById('cutlist');
+      const head = document.getElementById('cutHeading');
+      let lines = null;
+      let heading = 'This step';
+
+      if (s.id === 0) {
+        heading = 'Cut — blanks';
+        lines = [
+          `Strut blanks: ${HEX.qty * 3}`,
+          `Blank length: ~${fmt(BLANK_LEN)} (longest side ${fmt(HEX.a)})`
+        ];
+      } else if (s.id === 1) {
+        heading = 'Cut — rip stock';
+        lines = [`Cross-section: 2×6 → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}`];
+      } else if (s.id === 3) {
+        heading = 'Layout — jig';
+        lines = [`Base ${fmt(HEX.c)} · arcs ${fmt(HEX.a)} / ${fmt(HEX.b)}`];
+      } else if (s.id === 4) {
+        heading = 'Cut — bevel';
+        lines = [
+          `${fmt(STRUT_H)} × ${fmt(STOCK_W)} → ${fmt(STRUT_H)} × ${fmt(STRUT_W)} + ${BEVEL_DEG}°`
+        ];
+      } else if (s.id === 6) {
+        heading = 'Cut — initial miters';
+        lines = [
+          `First-end: ${HEX.qty * 2} × ${HEX.base}° (bases) + ${HEX.qty} × ${HEX.apex}° (apex)`,
+          `Long-point sides: ${HEX.qty * 2} × ${planDual(HEX.a, HEX.aIn)} + ${HEX.qty} × ${planDual(HEX.c, HEX.cIn)}`
+        ];
+      } else if (s.id === 7) {
+        heading = 'Cut — compound ears';
+        lines = [
+          `Apex miter ${HEX.apex}° + ${BEVEL_DEG}° bevel`,
+          `Base miters ${HEX.base}° + ${BEVEL_DEG}° bevel`
+        ];
+      } else if (s.id === 8) {
+        heading = 'Assemble';
+        lines = [`Screws (2×3 corners×panels): ${HEX.qty * 6}`];
+      } else if (s.id === 9) {
+        heading = 'Hex cut counts — final';
+        lines = fullCutCounts();
+      }
+
+      if (!lines) {
+        setPanelVisible(sec, false);
+        box.textContent = '';
+        return;
+      }
+      setPanelVisible(sec, true);
+      head.textContent = heading;
+      box.textContent = lines.join('\n');
     }
 
     function renderSteps() {
