@@ -20,10 +20,11 @@
     html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
     #c { display: block; width: 100%; height: 100%; }
     .ui {
-      position: absolute; top: 12px; left: 12px; width: min(380px, calc(100% - 24px));
+      position: absolute; top: 12px; left: 12px; width: min(420px, calc(100% - 24px));
       background: color-mix(in srgb, var(--panel) 92%, transparent);
       border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
       backdrop-filter: blur(8px); max-height: calc(100% - 24px); overflow: auto;
+      z-index: 6;
     }
     h1 { font-size: 15px; margin: 0 0 8px; font-weight: 650; }
     h2 { font-size: 12px; margin: 12px 0 6px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
@@ -46,8 +47,6 @@
       padding: 8px 10px; font-size: 12px; color: var(--muted); white-space: pre-wrap;
       margin-top: 4px;
     }
-    .navrow { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
-    .navrow .spacer { flex: 1; color: var(--muted); font-size: 12px; text-align: center; }
     .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: #2a3140; color: var(--muted); margin-left: 4px; }
     .machinesetup {
       background: #161a22; border: 1px solid var(--hex); border-radius: 8px;
@@ -60,21 +59,8 @@
     .machinesetup .ms-tools { color: var(--text); font-weight: 600; margin: 0 0 4px; }
     .machinesetup ul { margin: 4px 0 0; padding-left: 18px; color: var(--muted); }
     .machinesetup li { margin: 2px 0; }
-    .machine-hud {
-      position: absolute; right: 12px; top: 12px; width: min(280px, calc(100% - 420px));
-      background: #1c2028ee; border: 2px solid #3d8bfd; border-radius: 12px; padding: 10px 12px;
-      pointer-events: none; z-index: 5;
-    }
-    .machine-hud[hidden] { display: none !important; }
-    .machine-hud .mh-brand { font: 700 14px/1.25 system-ui; margin: 0 0 6px; }
-    .machine-hud.dewalt { border-color: #f5c518; }
-    .machine-hud.dewalt .mh-brand { color: #f5c518; }
-    .machine-hud.makita { border-color: #1a8f8a; }
-    .machine-hud.makita .mh-brand { color: #2ec4b6; }
-    .machine-hud ul { margin: 0; padding-left: 16px; color: var(--muted); font-size: 12px; }
-    .machine-hud li { margin: 2px 0; }
-    .vizrow { display: none; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
-    .vizrow.show { display: flex; }
+    .machine-hud { display: none !important; }
+    .vizrow { display: none !important; }
     .hex-meta {
       margin: 8px 0 0; border: 1px solid var(--line); border-radius: 8px;
       background: #161a22; padding: 6px 10px; font-size: 12px; color: var(--muted);
@@ -86,34 +72,74 @@
     .hex-meta .meta-body { white-space: pre-wrap; margin-top: 6px; }
     #cutSection[hidden], #machinesetup[hidden] { display: none !important; }
     #cutSection h2 { margin-top: 8px; }
-    .split-chrome {
-      /* Full viewport; divider at 50% aligns with world X=0 (MATERIALS | MACHINE). */
-      position: absolute; inset: 0; pointer-events: none; z-index: 3;
+    .split-chrome { display: none !important; }
+
+    /* 3-card flow */
+    .flow-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin: 10px 0 4px;
     }
-    .split-chrome[hidden] { display: none !important; }
-    .split-divider {
-      position: absolute; left: 50%; top: 8%; bottom: 8%; width: 2px;
-      transform: translateX(-50%);
-      background: color-mix(in srgb, #d7dde8 75%, var(--line));
-      box-shadow: 0 0 0 1px #00000066;
+    .flow-cards.two-col { grid-template-columns: repeat(2, 1fr); }
+    .flow-cards.one-col { grid-template-columns: 1fr; }
+    @media (max-width: 520px) {
+      .flow-cards, .flow-cards.two-col, .flow-cards.one-col { grid-template-columns: 1fr; }
     }
-    .split-label {
-      position: absolute; top: 14px;
-      font: 700 11px/1 system-ui; letter-spacing: 0.06em; text-transform: uppercase;
-      padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line);
-      background: #1c2028cc;
+    .flow-card {
+      background: #161a22;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px;
+      cursor: pointer;
+      text-align: left;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
     }
-    .split-label-left {
-      /* Sit in left pane but clear of the UI card */
-      left: max(28%, calc(var(--split-left, 404px) + 12%));
-      transform: translateX(-50%);
-      color: var(--wood); border-color: #6a4a2a;
+    .flow-card:hover { border-color: #4a5568; }
+    .flow-card:focus-visible { outline: 2px solid var(--hex); outline-offset: 2px; }
+    .flow-card[hidden] { display: none !important; }
+    .flow-card .fc-title {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; color: var(--muted); margin: 0;
     }
-    .split-label-right {
-      left: 72%; transform: translateX(-50%);
-      color: #f5c518; border-color: #f5c518;
+    .flow-card.materials .fc-title { color: var(--wood); }
+    .flow-card.machine .fc-title { color: #f5c518; }
+    .flow-card.output .fc-title { color: var(--accent); }
+    .flow-card .fc-callout {
+      font-size: 11px; color: var(--text); line-height: 1.3;
+      min-height: 2.6em;
     }
-    .split-chrome.makita .split-label-right { color: #2ec4b6; border-color: #1a8f8a; }
+    .flow-card .fc-preview {
+      width: 100%; aspect-ratio: 4 / 3; border-radius: 6px;
+      background: #0e1014; border: 1px solid #252b36;
+      object-fit: cover; display: block;
+    }
+    .flow-hint { font-size: 11px; color: var(--muted); margin: 0 0 4px; }
+
+    .role-modal {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0;
+      background: #121418;
+      color: var(--text);
+      width: min(920px, calc(100vw - 32px));
+      max-width: calc(100vw - 32px);
+      height: min(640px, calc(100vh - 48px));
+      max-height: calc(100vh - 48px);
+    }
+    .role-modal::backdrop { background: #00000099; }
+    .role-modal-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; border-bottom: 1px solid var(--line);
+      background: #1c2028;
+    }
+    .role-modal-bar strong { flex: 1; font-size: 13px; }
+    .role-modal-body { position: relative; height: calc(100% - 46px); }
+    #roleModalCanvas { display: block; width: 100%; height: 100%; }
   </style>
 </head>
 <body>
@@ -130,13 +156,27 @@
       <button id="uMM" type="button">mm</button>
       <button id="btnReset" type="button">Reset view</button>
     </div>
-    <div class="row vizrow" id="vizrow">
-      <button id="vizMachine" class="active" type="button" title="Split: materials left · machine right">Machine</button>
-      <button id="vizWood" type="button" title="Materials / jig only (left focus)">Wood</button>
-    </div>
     <div class="row" id="steps"></div>
     <div class="dims" id="dims"></div>
     <div class="machinesetup" id="machinesetup" aria-live="polite"></div>
+    <p class="flow-hint">Click a card for interactive 3D (pan / zoom)</p>
+    <div class="flow-cards" id="flowCards" aria-label="Step materials, machine, and output">
+      <button type="button" class="flow-card materials" id="cardMaterials" data-role="materials">
+        <div class="fc-title">Materials</div>
+        <div class="fc-callout" id="cardMaterialsCallout"></div>
+        <img class="fc-preview" id="cardMaterialsImg" alt="Materials preview" />
+      </button>
+      <button type="button" class="flow-card machine" id="cardMachine" data-role="machine">
+        <div class="fc-title">Machine</div>
+        <div class="fc-callout" id="cardMachineCallout"></div>
+        <img class="fc-preview" id="cardMachineImg" alt="Machine preview" />
+      </button>
+      <button type="button" class="flow-card output" id="cardOutput" data-role="output">
+        <div class="fc-title">Output</div>
+        <div class="fc-callout" id="cardOutputCallout"></div>
+        <img class="fc-preview" id="cardOutputImg" alt="Output preview" />
+      </button>
+    </div>
     <div id="cutSection">
       <h2 id="cutHeading">Hex cut counts</h2>
       <div class="cutbox" id="cutlist"></div>
@@ -146,7 +186,7 @@
       <div class="meta-body" id="hexMetaBody"></div>
     </details>
     <div class="hint">
-      Drag orbit · scroll zoom · right-drag pan<br>
+      Cards open interactive 3D · Esc closes<br>
       <span class="legend"><span style="background:#c48a4a"></span>strut</span>
       <span class="legend"><span style="background:#5b3a1e"></span>6.5° bevel</span>
       <span class="legend"><span style="background:#7dcea0"></span>jig</span>
@@ -160,11 +200,16 @@
     </div>
   </div>
   <div id="machineHud" class="machine-hud" hidden aria-live="polite"></div>
-  <div id="splitChrome" class="split-chrome" hidden aria-hidden="true">
-    <div class="split-divider"></div>
-    <div class="split-label split-label-left">Materials</div>
-    <div class="split-label split-label-right">Machine</div>
-  </div>
+  <div id="splitChrome" class="split-chrome" hidden aria-hidden="true"></div>
+  <dialog id="roleModal" class="role-modal" aria-labelledby="roleModalTitle">
+    <div class="role-modal-bar">
+      <strong id="roleModalTitle">Preview</strong>
+      <button type="button" id="roleModalClose">Close</button>
+    </div>
+    <div class="role-modal-body">
+      <canvas id="roleModalCanvas"></canvas>
+    </div>
+  </dialog>
 <script type="importmap">
 {
   "imports": {
@@ -175,7 +220,7 @@
 </script>
 <script type="module">
 
-    import * as THREE from 'three';
+import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
     import {
@@ -795,7 +840,7 @@
         g.add(badge);
         g.add(makeLabel('no machine / hand tools', new THREE.Vector3(0, 0.32, 0)));
       }
-      woodTarget.add(g);
+      machineTarget.add(g);
       return g;
     }
 
@@ -831,201 +876,304 @@
       }
     }
 
+
+    // --- Role roots for 3-card flow ---
+    const roleHold = new THREE.Group(); // off-main parking for role groups
+    scene.add(roleHold);
+    roleHold.visible = false;
+
+    let materialsRoot = new THREE.Group();
+    let outputRoot = new THREE.Group();
+    let machineRoot = new THREE.Group();
+    const roleState = {
+      materials: { title: 'Materials', callout: '', visible: true },
+      machine: { title: 'Machine', callout: '', visible: true },
+      output: { title: 'Output', callout: '', visible: true }
+    };
+
+    // Quiet main overview group (optional composite)
+    const overviewRoot = new THREE.Group();
+    group.add(overviewRoot);
+
+    // Offscreen preview renderer
+    const previewRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    previewRenderer.setPixelRatio(1);
+    previewRenderer.setSize(320, 240, false);
+    const previewScene = new THREE.Scene();
+    previewScene.background = new THREE.Color(0x0e1014);
+    previewScene.add(new THREE.HemisphereLight(0xc8d4e8, 0x2a2118, 1.1));
+    const pSun = new THREE.DirectionalLight(0xfff3e0, 1.35);
+    pSun.position.set(2, 3, 2);
+    previewScene.add(pSun);
+    previewScene.add(new THREE.AmbientLight(0xffffff, 0.28));
+    const previewCam = new THREE.PerspectiveCamera(40, 320 / 240, 0.01, 50);
+
+    function clearCss2dIn(obj) {
+      obj.traverse((o) => {
+        if (o.isCSS2DObject && o.element) o.element.remove();
+      });
+    }
+
+    function fitIsoCamera(cam, root, aspect) {
+      const box = new THREE.Box3().setFromObject(root);
+      if (box.isEmpty()) {
+        cam.position.set(1.2, 1.0, 1.4);
+        cam.lookAt(0, 0.2, 0);
+        return;
+      }
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z, 0.2);
+      const dist = maxDim * 2.15;
+      cam.aspect = aspect;
+      cam.near = 0.01;
+      cam.far = Math.max(50, dist * 8);
+      // isometric-ish
+      cam.position.set(center.x + dist * 0.85, center.y + dist * 0.65, center.z + dist * 0.95);
+      cam.lookAt(center);
+      cam.updateProjectionMatrix();
+    }
+
+    function captureRolePreview(root) {
+      if (!root || root.children.length === 0) return '';
+      // Temporarily park any CSS2D — WebGL preview won't draw them; callouts cover dims.
+      previewScene.add(root);
+      fitIsoCamera(previewCam, root, 320 / 240);
+      previewRenderer.render(previewScene, previewCam);
+      let url = '';
+      try { url = previewRenderer.domElement.toDataURL('image/png'); } catch (e) { url = ''; }
+      previewScene.remove(root);
+      roleHold.add(root);
+      return url;
+    }
+
+    function setRoleMeta(role, callout, visible) {
+      roleState[role].callout = callout || '';
+      roleState[role].visible = !!visible;
+    }
+
+    function updateFlowCards(previews) {
+      const wrap = document.getElementById('flowCards');
+      const nVis = ['materials', 'machine', 'output'].filter((r) => roleState[r].visible).length;
+      wrap.classList.toggle('two-col', nVis === 2);
+      wrap.classList.toggle('one-col', nVis === 1);
+
+      const specs = [
+        ['materials', 'cardMaterials', 'cardMaterialsCallout', 'cardMaterialsImg'],
+        ['machine', 'cardMachine', 'cardMachineCallout', 'cardMachineImg'],
+        ['output', 'cardOutput', 'cardOutputCallout', 'cardOutputImg']
+      ];
+      for (const [role, cardId, callId, imgId] of specs) {
+        const card = document.getElementById(cardId);
+        const vis = roleState[role].visible;
+        card.hidden = !vis;
+        document.getElementById(callId).textContent = roleState[role].callout;
+        const img = document.getElementById(imgId);
+        const src = (previews && previews[role]) || '';
+        if (src) {
+          img.src = src;
+          img.style.display = '';
+        } else {
+          img.removeAttribute('src');
+          img.style.display = vis ? '' : 'none';
+        }
+      }
+    }
+
+    function buildRipMaterials() {
+      // PDF 2×6 stack only (input) — proportions from 950ad3b / d5fec81
+      addMaterialsPad(1.2, 1.0);
+      const stockQty = `(${RAW_STOCK_QTY})`;
+      const stockDims = units === 'mm'
+        ? `${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm`
+        : `${STRUT_H_IN} × ${FULL_2X6_W_IN} × ${RAW_STOCK_LEN_IN}`;
+      const n = RAW_STOCK_QTY;
+      const stackBudgetH = 0.94;
+      const gapRatio = 1.15;
+      const faceH = stackBudgetH / (n + gapRatio * (n - 1));
+      const gap = faceH * gapRatio;
+      const faceW = faceH * (FULL_2X6_W / STRUT_H);
+      const faceL = Math.min(faceW * (RAW_STOCK_LEN / FULL_2X6_W), 0.70);
+      const yaw = 0.35;
+      const stackX = 0;
+      const stackBaseY = 0.01;
+      const stackTopY = stackBaseY + n * faceH + (n - 1) * gap;
+      const stackMat = woodMat.clone();
+      stackMat.emissive = new THREE.Color(0x2a1808);
+      stackMat.emissiveIntensity = 0.22;
+      for (let i = 0; i < n; i++) {
+        const board = new THREE.Mesh(new THREE.BoxGeometry(faceW, faceH, faceL), stackMat);
+        board.frustumCulled = false;
+        board.rotation.y = yaw;
+        board.position.set(stackX, stackBaseY + faceH / 2 + i * (faceH + gap), 0);
+        woodTarget.add(board);
+        addDarkOutline(board);
+      }
+      woodTarget.add(makeLabel('PDF 2×6 kiln-dried', new THREE.Vector3(stackX, stackTopY + 0.09, 0)));
+      woodTarget.add(makeLabel(`${stockQty}  ${stockDims}`, new THREE.Vector3(stackX, stackBaseY - 0.08, 0)));
+      return { callout: `${stockQty}  ${stockDims}`, faceH, gap, faceL, yaw, stackMat, stackBaseY, stackTopY };
+    }
+
+    function buildRipOutput(shared) {
+      // Two half stacks (RAW_STOCK_QTY × 2)
+      addMaterialsPad(1.35, 1.0);
+      const n = RAW_STOCK_QTY;
+      const faceH = shared.faceH;
+      const gap = shared.gap;
+      const faceL = shared.faceL;
+      const yaw = shared.yaw;
+      const stackMat = shared.stackMat;
+      const stackBaseY = shared.stackBaseY;
+      const stackTopY = shared.stackTopY;
+      const halfLabel = units === 'mm'
+        ? `${STRUT_H}×${STOCK_W} mm`
+        : `${STRUT_H_IN} × ${STOCK_W_IN}`;
+      const halfFaceW = faceH * (STOCK_W / STRUT_H);
+      const halfFaceH = faceH;
+      const halfFaceL = faceL;
+      const halfStackGap = Math.max(halfFaceW * 1.15, 0.08);
+      const halfX0 = - (halfFaceW + halfStackGap) / 2;
+      const halfX1 = (halfFaceW + halfStackGap) / 2;
+      const halvesMidX = 0;
+      for (const hx of [halfX0, halfX1]) {
+        for (let i = 0; i < n; i++) {
+          const half = new THREE.Mesh(new THREE.BoxGeometry(halfFaceW, halfFaceH, halfFaceL), stackMat);
+          half.frustumCulled = false;
+          half.rotation.y = yaw;
+          half.position.set(hx, stackBaseY + halfFaceH / 2 + i * (halfFaceH + gap), 0);
+          woodTarget.add(half);
+          addDarkOutline(half);
+        }
+      }
+      woodTarget.add(makeLabel(halfLabel, new THREE.Vector3(halvesMidX, stackTopY + 0.09, 0)));
+      woodTarget.add(makeLabel(`${n} × 2  ·  ${n * 2} halves`, new THREE.Vector3(halvesMidX, stackBaseY - 0.08, 0)));
+      return `${n} × 2  ·  ${halfLabel}`;
+    }
+
     function rebuild() {
-      // CSS2DObject only removes its DOM node when *itself* is removed from its parent.
-      // group.clear() detaches wood/machine roots as wholes, so prior label <div>s would
-      // stay in labelRenderer and stack (inch + mm both visible after unit toggle).
+      // CSS2D orphan clear before group.clear()
       group.traverse((obj) => {
         if (obj.isCSS2DObject && obj.element) obj.element.remove();
       });
+      clearCss2dIn(roleHold);
+      clearCss2dIn(materialsRoot);
+      clearCss2dIn(outputRoot);
+      clearCss2dIn(machineRoot);
       while (labelRenderer.domElement.firstChild) {
         labelRenderer.domElement.removeChild(labelRenderer.domElement.firstChild);
       }
-      group.clear();
-      const woodRoot = new THREE.Group();
-      const machineRoot = new THREE.Group();
-      group.add(woodRoot);
-      group.add(machineRoot);
-      woodTarget = woodRoot;
-      machineTarget = machineRoot;
+      // If modal open, close first so roots aren't mid-reparent
+      if (modalOpen) closeRoleModal(true);
+
+      overviewRoot.clear();
+      roleHold.clear();
+      materialsRoot = new THREE.Group();
+      outputRoot = new THREE.Group();
+      machineRoot = new THREE.Group();
+      roleHold.add(materialsRoot, outputRoot, machineRoot);
 
       const view = STEPS[step].view;
       const mv = STEPS[step].machineVisual;
       const saw = hasSawVisual(mv);
-      // Machine mode (default): MATERIALS pane LEFT | MACHINE pane RIGHT (same as miters)
-      // Wood mode: materials only
-      const showWood = !saw || vizMode === 'wood' || vizMode === 'machine';
-      const showMachine = !saw || vizMode === 'machine';
-      const split = saw && showWood && showMachine;
-      if (split) {
-        woodRoot.position.x = WOOD_SPLIT_X;
-        machineRoot.position.x = MACHINE_SPLIT_X;
-      }
+      const showMachineCard = mv !== 'none';
+
       const { pA, pB, pC, h, c } = hexPoints();
       const up = new THREE.Vector3(0, 1, 0);
-      if (!showMachine) setMachineHud(null);
 
-      if (showWood && view === 'blanks') {
-        // Face-on ripped blank — large enough to fill MATERIALS like miters
-        if (split) addMaterialsPad(1.15, 1.0);
-        const blank = new THREE.Mesh(
-          new THREE.BoxGeometry(0.95, 0.18, 0.32),
-          woodMat
-        );
+      setMachineHud(null);
+
+      // --- MATERIALS ---
+      woodTarget = materialsRoot;
+      machineTarget = machineRoot;
+      let matCall = '';
+      let outCall = '';
+      let machCall = '';
+      let showMaterials = true;
+      let showOutput = true;
+
+      if (view === 'stock' && mv === 'tableRip') {
+        const shared = buildRipMaterials();
+        matCall = shared.callout;
+        woodTarget = outputRoot;
+        outCall = buildRipOutput(shared);
+      } else if (view === 'stock' && mv === 'none') {
+        // Optional finish — Output-focused stained matched pairs
+        showMaterials = false;
+        woodTarget = outputRoot;
+        [-0.15, 0.15].forEach((x, i) => {
+          const half = new THREE.Mesh(
+            new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 1.0),
+            stainMat
+          );
+          half.position.set(x, STRUT_H / 2000, 0);
+          woodTarget.add(half);
+          woodTarget.add(makeLabel(i === 0 ? `${fmt(STRUT_H)}×${fmt(STOCK_W)} stained` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
+        });
+        outCall = `matched pair · ${fmt(STRUT_H)}×${fmt(STOCK_W)}`;
+      } else if (view === 'blanks') {
+        // Materials: ripped half stock cue
+        addMaterialsPad(1.0, 0.9);
+        const halfIn = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.14, 0.28), woodMat);
+        halfIn.position.set(0, 0.09, 0);
+        woodTarget.add(halfIn);
+        addDarkOutline(halfIn);
+        const halfLbl = units === 'mm' ? `${STRUT_H}×${STOCK_W} mm` : `${STRUT_H_IN} × ${STOCK_W_IN}`;
+        woodTarget.add(makeLabel(`ripped half ${halfLbl}`, new THREE.Vector3(0, 0.28, 0)));
+        matCall = `input · ${halfLbl}`;
+
+        woodTarget = outputRoot;
+        addMaterialsPad(1.15, 1.0);
+        const blank = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.18, 0.32), woodMat);
         blank.position.set(0.05, 0.11, 0);
         woodTarget.add(blank);
         addDarkOutline(blank);
-        const blankQty = HEX.qty * 3; // 73 panels × 3 = 219 strut blanks
+        const blankQty = HEX.qty * 3;
         woodTarget.add(makeLabel(`ripped blank  w × h × l`, new THREE.Vector3(0.05, 0.42, 0)));
         woodTarget.add(makeLabel(blankWhlLabel(), new THREE.Vector3(0.05, 0.32, 0)));
-        woodTarget.add(makeLabel(
-          `1 of ${blankQty} shown  (${HEX.qty} panels × 3)`,
-          new THREE.Vector3(0.05, -0.08, 0)
-        ));
-      }
-
-      if (showWood && view === 'stock') {
-        if (STEPS[step].machineVisual === 'tableRip') {
-          // MATERIALS: stack of PDF 2×6 stock (RAW_STOCK_QTY) → rip → two stacks of halves.
-          // Board mesh proportions from FULL_2X6_W × STRUT_H × RAW_STOCK_LEN (950ad3b);
-          // halves use STOCK_W × STRUT_H × RAW_STOCK_LEN.
-          if (split) addMaterialsPad(1.70, 1.2);
-          const halfLabel = units === 'mm'
-            ? `${STRUT_H}×${STOCK_W} mm`
-            : `${STRUT_H_IN} × ${STOCK_W_IN}`;
-          // One qty callout + dims once (no per-board dim spam).
-          const stockQty = `(${RAW_STOCK_QTY})`;
-          const stockDims = units === 'mm'
-            ? `${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm`
-            : `${STRUT_H_IN} × ${FULL_2X6_W_IN} × ${RAW_STOCK_LEN_IN}`;
-
-          // Fit RAW_STOCK_QTY boards + small gaps in MATERIALS; keep w×h×l ratios.
-          // BoxGeometry(w,h,l) with l longest; yaw so length reads on screen (−Z cam).
-          const n = RAW_STOCK_QTY;
-          const stackBudgetH = 0.94;
-          const gapRatio = 1.15; // gap vs thickness — small but clearly readable stripes
-          const faceH = stackBudgetH / (n + gapRatio * (n - 1));
-          const gap = faceH * gapRatio;
-          const faceW = faceH * (FULL_2X6_W / STRUT_H);
-          const faceL = Math.min(faceW * (RAW_STOCK_LEN / FULL_2X6_W), 0.70);
-          // Mild yaw — keep length readable without sliding under the left UI.
-          const yaw = 0.35;
-          // Visible MATERIALS band is right of the opaque sidebar; keep meshes there.
-          const stackX = 0.42;
-          const stackBaseY = 0.01;
-          const stackTopY = stackBaseY + n * faceH + (n - 1) * gap;
-          const stackMidY = (stackBaseY + stackTopY) / 2;
-
-          const stackMat = woodMat.clone();
-          stackMat.emissive = new THREE.Color(0x2a1808);
-          stackMat.emissiveIntensity = 0.22;
-          for (let i = 0; i < n; i++) {
-            // Unique geometry per board — shared BoxGeometry + outline children can
-            // confuse bounds/culling when many thin slabs share one buffer.
-            const board = new THREE.Mesh(new THREE.BoxGeometry(faceW, faceH, faceL), stackMat);
-            board.frustumCulled = false;
-            board.rotation.y = yaw;
-            board.position.set(stackX, stackBaseY + faceH / 2 + i * (faceH + gap), 0);
-            woodTarget.add(board);
-            addDarkOutline(board);
-          }
-          woodTarget.add(makeLabel('PDF 2×6 kiln-dried', new THREE.Vector3(stackX, stackTopY + 0.09, 0)));
-          woodTarget.add(makeLabel(`${stockQty}  ${stockDims}`, new THREE.Vector3(stackX, stackBaseY - 0.08, 0)));
-
-          const arr = arrowMesh(new THREE.Vector3(1, 0, 0), 0xc48a4a);
-          arr.position.set(0.72, stackMidY, 0);
-          woodTarget.add(arr);
-          woodTarget.add(makeLabel('rip in half', new THREE.Vector3(0.72, stackTopY + 0.09, 0)));
-
-          // Halves: two stacks of RAW_STOCK_QTY (= 64 pieces). Proportions STOCK_W × STRUT_H × RAW_STOCK_LEN.
-          // Same stack math / gaps as PDF stock (abaea3e); no halfScale — unit-pure mesh ratios.
-          const halfFaceW = faceH * (STOCK_W / STRUT_H);
-          const halfFaceH = faceH;
-          const halfFaceL = faceL;
-          // Gap between stacks ≈ board gap scale, but wide enough that yaw does not merge columns.
-          const halfStackGap = Math.max(halfFaceW * 1.15, 0.08);
-          const halfX0 = 0.86;
-          const halfX1 = halfX0 + halfFaceW + halfStackGap;
-          const halvesMidX = (halfX0 + halfX1) / 2;
-          for (const hx of [halfX0, halfX1]) {
-            for (let i = 0; i < n; i++) {
-              const half = new THREE.Mesh(new THREE.BoxGeometry(halfFaceW, halfFaceH, halfFaceL), stackMat);
-              half.frustumCulled = false;
-              half.rotation.y = yaw;
-              half.position.set(hx, stackBaseY + halfFaceH / 2 + i * (halfFaceH + gap), 0);
-              woodTarget.add(half);
-              addDarkOutline(half);
-            }
-          }
-          // One qty callout + dims once (no per-board dim spam).
-          woodTarget.add(makeLabel(halfLabel, new THREE.Vector3(halvesMidX, stackTopY + 0.09, 0)));
-          woodTarget.add(makeLabel(`${n} × 2  ·  ${n * 2} halves`, new THREE.Vector3(halvesMidX, stackBaseY - 0.08, 0)));
-        }
-        if (STEPS[step].machineVisual === 'none') {
-          // Optional finish — no saw; stained matched pairs
-          [-0.15, 0.15].forEach((x, i) => {
-            const half = new THREE.Mesh(
-              new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 1.0),
-              stainMat
-            );
-            half.position.set(x, STRUT_H / 2000, 0);
-            woodTarget.add(half);
-            woodTarget.add(makeLabel(i === 0 ? `${fmt(STRUT_H)}×${fmt(STOCK_W)} stained` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
-          });
-        }
-      }
-
-      if (showWood && view === 'bevel') {
-        // Cross-section: ripped half → finished face + bevel (large, centered)
-        if (split) addMaterialsPad(1.2, 1.0);
-        const halfLbl = units === 'mm'
-          ? `${STRUT_H}×${STOCK_W} mm`
-          : `${STRUT_H_IN} × ${STOCK_W_IN}`;
-        const finLbl = units === 'mm'
-          ? `${STRUT_H}×${STRUT_W} mm`
-          : `${STRUT_H_IN} × ${STRUT_W_IN}`;
-
-        const halfIn = new THREE.Mesh(
-          new THREE.BoxGeometry(0.28, 0.22, 0.18),
-          woodMat
-        );
-        halfIn.position.set(-0.28, 0.13, 0);
+        woodTarget.add(makeLabel(`1 of ${blankQty} shown  (${HEX.qty} panels × 3)`, new THREE.Vector3(0.05, -0.08, 0)));
+        outCall = `${blankQty} · ${blankWhlLabel()}`;
+      } else if (view === 'bevel') {
+        const halfLbl = units === 'mm' ? `${STRUT_H}×${STOCK_W} mm` : `${STRUT_H_IN} × ${STOCK_W_IN}`;
+        const finLbl = units === 'mm' ? `${STRUT_H}×${STRUT_W} mm` : `${STRUT_H_IN} × ${STRUT_W_IN}`;
+        addMaterialsPad(1.0, 0.9);
+        const halfIn = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.18), woodMat);
+        halfIn.position.set(0, 0.13, 0);
         woodTarget.add(halfIn);
-        woodTarget.add(makeLabel(`ripped half ${halfLbl}`, new THREE.Vector3(-0.28, 0.38, 0)));
+        woodTarget.add(makeLabel(`ripped half ${halfLbl}`, new THREE.Vector3(0, 0.38, 0)));
+        matCall = halfLbl;
 
-        const arr = arrowMesh(new THREE.Vector3(1, 0, 0), 0xc48a4a);
-        arr.position.set(0.02, 0.16, 0);
-        woodTarget.add(arr);
-
-        const finished = new THREE.Mesh(
-          new THREE.BoxGeometry(0.16, 0.22, 0.18),
-          woodMat
-        );
-        finished.position.set(0.34, 0.13, 0);
+        woodTarget = outputRoot;
+        addMaterialsPad(1.1, 0.9);
+        const finished = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 0.18), woodMat);
+        finished.position.set(-0.04, 0.13, 0);
         woodTarget.add(finished);
-        const bevelEdge = new THREE.Mesh(
-          new THREE.BoxGeometry(0.05, 0.22, 0.18),
-          bevelMat
-        );
-        bevelEdge.position.set(0.45, 0.13, 0);
+        const bevelEdge = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 0.18), bevelMat);
+        bevelEdge.position.set(0.07, 0.13, 0);
         woodTarget.add(bevelEdge);
-        woodTarget.add(makeLabel(`template ${finLbl}`, new THREE.Vector3(0.40, 0.38, 0)));
-        woodTarget.add(makeLabel(`${BEVEL_DEG}° bevel out`, new THREE.Vector3(0.40, -0.08, 0)));
-      }
+        woodTarget.add(makeLabel(`template ${finLbl}`, new THREE.Vector3(0.02, 0.38, 0)));
+        woodTarget.add(makeLabel(`${BEVEL_DEG}° bevel out`, new THREE.Vector3(0.02, -0.08, 0)));
+        outCall = `${finLbl} + ${BEVEL_DEG}°`;
+      } else if (view === 'jig') {
+        addJig(pA, pB, pC, h, c, false);
+        woodTarget.add(makeLabel('arc ∩ = apex', pC.clone().add(new THREE.Vector3(0, 0.08, 0.05))));
+        matCall = `base ${fmt(HEX.c)} · arcs ${fmt(HEX.a)}`;
+        showOutput = false;
+      } else if (view === 'jigStops') {
+        showMaterials = false;
+        woodTarget = outputRoot;
+        addJig(pA, pB, pC, h, c, true);
+        woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
+        outCall = 'jig + backing stops';
+      } else if (view === 'miters') {
+        addMaterialsPad(1.0, 0.9);
+        const blank = new THREE.Mesh(new THREE.BoxGeometry(0.7, STRUT_H / 1000 * 8, STOCK_W / 1000 * 6), woodMat);
+        blank.position.set(0, 0.08, 0);
+        woodTarget.add(blank);
+        addDarkOutline(blank);
+        woodTarget.add(makeLabel('bevelled blank', new THREE.Vector3(0, 0.28, 0)));
+        matCall = `blank · face ${fmt(STRUT_W)}`;
 
-      if (showWood && (view === 'jig' || view === 'jigStops')) {
-        addJig(pA, pB, pC, h, c, view === 'jigStops');
-        if (view === 'jig') {
-          woodTarget.add(makeLabel('arc ∩ = apex', pC.clone().add(new THREE.Vector3(0, 0.08, 0.05))));
-        } else {
-          const s1 = placeStrut(pA, pB, up);
-          const s2 = placeStrut(pB, pC, up);
-          const s3 = placeStrut(pC, pA, up);
-          woodTarget.add(s1, s2, s3);
-        }
-      }
-
-      if (showWood && view === 'miters') {
+        woodTarget = outputRoot;
         addJig(pA, pB, pC, h, c, false, false);
         const s1 = placeStrut(pA, pB, up);
         const s2 = placeStrut(pB, pC, up);
@@ -1037,10 +1185,13 @@
         woodTarget.add(makeLabel(`apex ${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
         woodTarget.add(makeLabel(`base ${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.08, 0.08, 0))));
         woodTarget.add(makeLabel(`base ${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.08, 0.08, 0))));
-      }
+        outCall = `${HEX.base}° / ${HEX.apex}° miters`;
+      } else if (view === 'ears') {
+        addJig(pA, pB, pC, h, c, false, false);
+        woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
+        matCall = `miters ${HEX.base}° / ${HEX.apex}°`;
 
-      if (showWood && view === 'ears') {
-        // Angle-focused compound ears — no full side-length dump
+        woodTarget = outputRoot;
         addJig(pA, pB, pC, h, c, false, false);
         woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
         woodTarget.add(makeLabel(`apex miter ${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
@@ -1053,42 +1204,178 @@
           ear.position.y = 0.03;
           woodTarget.add(ear);
         });
-      }
-
-      if (showWood && (view === 'assemble' || view === 'done')) {
+        outCall = `compound ears + ${BEVEL_DEG}°`;
+      } else if (view === 'assemble' || view === 'done') {
+        if (view === 'assemble') {
+          addMaterialsPad(1.0, 0.85);
+          const a = placeStrut(pA, pB, up);
+          a.position.set(0, STRUT_H / 2000, 0);
+          // simple loose strut cue
+          const loose = new THREE.Mesh(new THREE.BoxGeometry(0.55, STRUT_H / 1000, STRUT_W / 1000), woodMat);
+          loose.position.set(0, 0.06, 0);
+          woodTarget.add(loose);
+          addDarkOutline(loose);
+          woodTarget.add(makeLabel('finished struts', new THREE.Vector3(0, 0.22, 0)));
+          matCall = 'finished struts';
+        } else {
+          showMaterials = false;
+        }
+        woodTarget = outputRoot;
         addJig(pA, pB, pC, h, c, true);
         woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
         if (view === 'done') {
           woodTarget.add(makeLabel(`${HEX.qty} incl. 4 windows`, new THREE.Vector3(0, 0.2, h / 2)));
+          outCall = `${HEX.qty} hex panels`;
+        } else {
+          outCall = 'assembled frame';
         }
+      } else {
+        // fallback
+        showMaterials = false;
+        showOutput = false;
       }
 
-      // Right pane: branded machine schematic (saw steps in Machine/split mode)
-      if (showMachine) {
+      // --- MACHINE ---
+      machineTarget = machineRoot;
+      if (showMachineCard) {
         addMachineVisual(mv);
+        if (mv === 'tableRip') machCall = `${TOOL_TABLE_SAW} · rip`;
+        else if (mv === 'tableBevel') machCall = `${TOOL_TABLE_SAW} · ${BEVEL_DEG}°`;
+        else if (mv === 'miterCrosscut') machCall = `${TOOL_MITER_SAW} · crosscut`;
+        else if (mv === 'miterSimple') machCall = `${TOOL_MITER_SAW} · miters`;
+        else if (mv === 'miterCompound') machCall = `${TOOL_MITER_SAW} · compound`;
+        else if (mv === 'handLayout') machCall = 'hand layout · no saw';
+        else if (mv === 'drill') machCall = 'drill / driver';
+        else machCall = 'machine';
       }
 
-      if (split) {
-        // Two pane floors with a clear gap under the divider (not one shared shop floor)
-        addPaneFloor(group, WOOD_SPLIT_X);
-        addPaneFloor(group, MACHINE_SPLIT_X);
-      } else {
-        const grid = new THREE.GridHelper(4.5, 18, 0x2a3140, 0x1a1e26);
-        grid.position.y = -0.02;
-        group.add(grid);
+      setRoleMeta('materials', matCall, showMaterials && materialsRoot.children.length > 0);
+      setRoleMeta('machine', machCall, showMachineCard && machineRoot.children.length > 0);
+      setRoleMeta('output', outCall, showOutput && outputRoot.children.length > 0);
+
+      // Capture static isometric previews
+      const previews = {
+        materials: roleState.materials.visible ? captureRolePreview(materialsRoot) : '',
+        machine: roleState.machine.visible ? captureRolePreview(machineRoot) : '',
+        output: roleState.output.visible ? captureRolePreview(outputRoot) : ''
+      };
+      updateFlowCards(previews);
+
+      // Quiet main overview: materials (or output if no materials), centered
+      overviewRoot.clear();
+      const grid = new THREE.GridHelper(3.2, 12, 0x2a3140, 0x1a1e26);
+      grid.position.y = -0.02;
+      overviewRoot.add(grid);
+      const focus = roleState.materials.visible ? materialsRoot
+        : (roleState.output.visible ? outputRoot : machineRoot);
+      if (focus && focus.children.length) {
+        // Clone for overview so cards keep originals in roleHold
+        const clone = focus.clone(true);
+        // Strip CSS2D clones (DOM would duplicate)
+        const strip = [];
+        clone.traverse((o) => { if (o.isCSS2DObject) strip.push(o); });
+        strip.forEach((o) => o.parent && o.parent.remove(o));
+        overviewRoot.add(clone);
       }
 
-      const chrome = document.getElementById('splitChrome');
-      if (split) {
-        chrome.hidden = false;
-        const brand = (mv || '').startsWith('miter') ? 'makita' : 'dewalt';
-        chrome.classList.toggle('makita', brand === 'makita');
-        layoutSplitChrome();
-      } else {
-        chrome.hidden = true;
-        chrome.classList.remove('makita');
-      }
+      // Frame quiet overview
+      camera.position.set(1.35, 1.15, 1.85);
+      controls.target.set(0, 0.25, 0);
     }
+
+    // --- Modal interactive view ---
+    const modalEl = document.getElementById('roleModal');
+    const modalCanvas = document.getElementById('roleModalCanvas');
+    const modalRenderer = new THREE.WebGLRenderer({ canvas: modalCanvas, antialias: true });
+    modalRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    const modalLabelRenderer = new CSS2DRenderer();
+    modalLabelRenderer.domElement.style.position = 'absolute';
+    modalLabelRenderer.domElement.style.inset = '0';
+    modalLabelRenderer.domElement.style.pointerEvents = 'none';
+    document.querySelector('.role-modal-body').appendChild(modalLabelRenderer.domElement);
+
+    const modalScene = new THREE.Scene();
+    modalScene.background = new THREE.Color(0x121418);
+    modalScene.add(new THREE.HemisphereLight(0xc8d4e8, 0x2a2118, 1.1));
+    const mSun = new THREE.DirectionalLight(0xfff3e0, 1.4);
+    mSun.position.set(2, 3, 2);
+    modalScene.add(mSun);
+    modalScene.add(new THREE.AmbientLight(0xffffff, 0.25));
+    const modalCam = new THREE.PerspectiveCamera(45, 1, 0.01, 50);
+    const modalControls = new OrbitControls(modalCam, modalRenderer.domElement);
+    modalControls.enableDamping = true;
+    let modalOpen = false;
+    let modalRole = null;
+    const modalHost = new THREE.Group();
+    modalScene.add(modalHost);
+
+    function resizeModal() {
+      if (!modalOpen) return;
+      const body = document.querySelector('.role-modal-body');
+      const w = body.clientWidth || 800;
+      const h = body.clientHeight || 560;
+      modalRenderer.setSize(w, h, false);
+      modalLabelRenderer.setSize(w, h);
+      modalCam.aspect = w / h;
+      modalCam.updateProjectionMatrix();
+    }
+
+    function openRoleModal(role) {
+      const root = role === 'materials' ? materialsRoot
+        : role === 'machine' ? machineRoot : outputRoot;
+      if (!root || !roleState[role].visible) return;
+      modalRole = role;
+      document.getElementById('roleModalTitle').textContent =
+        roleState[role].title + (roleState[role].callout ? ' — ' + roleState[role].callout : '');
+
+      // Clear prior CSS2D in modal host
+      clearCss2dIn(modalHost);
+      while (modalLabelRenderer.domElement.firstChild) {
+        modalLabelRenderer.domElement.removeChild(modalLabelRenderer.domElement.firstChild);
+      }
+      modalHost.clear();
+
+      // Reparent live role group into modal
+      modalHost.add(root);
+      root.visible = true;
+
+      fitIsoCamera(modalCam, root, 1.4);
+      modalControls.target.set(0, 0.2, 0);
+      const box = new THREE.Box3().setFromObject(root);
+      if (!box.isEmpty()) modalControls.target.copy(box.getCenter(new THREE.Vector3()));
+      modalControls.update();
+
+      modalOpen = true;
+      if (typeof modalEl.showModal === 'function') modalEl.showModal();
+      else modalEl.setAttribute('open', '');
+      resizeModal();
+    }
+
+    function closeRoleModal(silent) {
+      if (!modalOpen && !modalEl.open) return;
+      // Clear CSS2D before moving group back
+      clearCss2dIn(modalHost);
+      while (modalLabelRenderer.domElement.firstChild) {
+        modalLabelRenderer.domElement.removeChild(modalLabelRenderer.domElement.firstChild);
+      }
+      // Return role roots to hold
+      if (materialsRoot.parent === modalHost) roleHold.add(materialsRoot);
+      if (machineRoot.parent === modalHost) roleHold.add(machineRoot);
+      if (outputRoot.parent === modalHost) roleHold.add(outputRoot);
+      modalHost.clear();
+      modalRole = null;
+      modalOpen = false;
+      if (modalEl.open) modalEl.close();
+    }
+
+    document.getElementById('cardMaterials').onclick = () => openRoleModal('materials');
+    document.getElementById('cardMachine').onclick = () => openRoleModal('machine');
+    document.getElementById('cardOutput').onclick = () => openRoleModal('output');
+    document.getElementById('roleModalClose').onclick = () => closeRoleModal();
+    modalEl.addEventListener('cancel', (e) => { e.preventDefault(); closeRoleModal(); });
+    modalEl.addEventListener('click', (e) => {
+      if (e.target === modalEl) closeRoleModal();
+    });
 
     function fullHexSummary() {
       return [
@@ -1123,7 +1410,6 @@
       const el = document.getElementById('machinesetup');
       const tools = (typeof ms.machines === 'function' ? ms.machines() : ms.machines) || '';
       const settings = (typeof ms.settings === 'function' ? ms.settings() : ms.settings) || [];
-      // Optional finish / jig stops / done: drop "Machine setup: None" noise
       if (!tools && settings.length === 0) {
         el.innerHTML = '';
         setPanelVisible(el, false);
@@ -1140,7 +1426,6 @@
 
     function setDims() {
       const s = STEPS[step];
-      // Action + that-step text only — full Hex summary lives in collapsed meta
       document.getElementById('dims').textContent = s.title + '\n' + s.text();
       document.getElementById('hexMetaBody').textContent = fullHexSummary();
     }
@@ -1220,32 +1505,18 @@
     function sync() {
       document.getElementById('uIN').classList.toggle('active', units === 'in');
       document.getElementById('uMM').classList.toggle('active', units === 'mm');
-      const saw = hasSawVisual(STEPS[step].machineVisual);
-      document.getElementById('vizrow').classList.toggle('show', saw);
-      document.getElementById('vizMachine').classList.toggle('active', vizMode === 'machine');
-      document.getElementById('vizWood').classList.toggle('active', vizMode === 'wood');
       renderSteps();
       setDims();
       setMachineSetup();
       setCutList();
       rebuild();
-      if (saw && vizMode === 'machine') {
-        // Frame MATERIALS left of world-center divider + MACHINE right
-        camera.position.set(0.15, 1.55, 3.4);
-        controls.target.set(0.05, 0.2, 0);
-      } else if (saw && vizMode === 'wood') {
-        camera.position.set(-0.9, 1.35, 2.7);
-        controls.target.set(WOOD_SPLIT_X, 0.2, 0);
-      }
     }
 
     document.getElementById('uIN').onclick = () => { units = 'in'; sync(); };
     document.getElementById('uMM').onclick = () => { units = 'mm'; sync(); };
-    document.getElementById('vizMachine').onclick = () => { vizMode = 'machine'; sync(); };
-    document.getElementById('vizWood').onclick = () => { vizMode = 'wood'; sync(); };
     document.getElementById('btnReset').onclick = () => {
-      camera.position.set(1.6, 1.2, 2.2);
-      controls.target.set(0, 0.35, 0);
+      camera.position.set(1.35, 1.15, 1.85);
+      controls.target.set(0, 0.25, 0);
     };
     function resize() {
       const w = innerWidth, h = innerHeight;
@@ -1253,7 +1524,7 @@
       labelRenderer.setSize(w, h);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      layoutSplitChrome();
+      resizeModal();
     }
     addEventListener('resize', resize);
     resize();
@@ -1265,6 +1536,11 @@
       controls.update();
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
+      if (modalOpen) {
+        modalControls.update();
+        modalRenderer.render(modalScene, modalCam);
+        modalLabelRenderer.render(modalScene, modalCam);
+      }
     })();
 
 </script>
