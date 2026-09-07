@@ -264,7 +264,7 @@
           machines: () => TOOL_TABLE_SAW,
           settings: () => [
             `Bevel: set ${BEVEL_DEG}° on DWE7492 0–45° scale (0° = square)`,
-            `Fence for finished face ${fmt(STRUT_W)} (${STRUT_W} mm)`,
+            `Fence for finished face ${fmt(STRUT_W)}`,
             'Keep first strut as fence / template; matched pairs; bevel faces out',
             'Note: EU 90-based scales only → ~83.5°'
           ]
@@ -403,8 +403,8 @@
     }
 
     function planDual(mm, inStr) {
-      if (units === 'mm') return `${mm} mm (${inStr})`;
-      return `${inStr} (${mm} mm)`;
+      // Active unit only — dual strings confused the unit toggle (and leftover CSS2D labels).
+      return units === 'mm' ? `${mm} mm` : inStr;
     }
 
     function triangleHeight(a, b, c) {
@@ -800,6 +800,15 @@
     }
 
     function rebuild() {
+      // CSS2DObject only removes its DOM node when *itself* is removed from its parent.
+      // group.clear() detaches wood/machine roots as wholes, so prior label <div>s would
+      // stay in labelRenderer and stack (inch + mm both visible after unit toggle).
+      group.traverse((obj) => {
+        if (obj.isCSS2DObject && obj.element) obj.element.remove();
+      });
+      while (labelRenderer.domElement.firstChild) {
+        labelRenderer.domElement.removeChild(labelRenderer.domElement.firstChild);
+      }
       group.clear();
       const woodRoot = new THREE.Group();
       const machineRoot = new THREE.Group();
@@ -842,8 +851,8 @@
           // MATERIALS: large cross-section 2×6 → two halves (fills left pane like miters)
           if (split) addMaterialsPad(1.25, 1.05);
           const halfLabel = units === 'mm'
-            ? `${STRUT_H}×${STOCK_W} mm (${STRUT_H_IN} × ${STOCK_W_IN})`
-            : `${STRUT_H_IN} × ${STOCK_W_IN} (${STRUT_H}×${STOCK_W} mm)`;
+            ? `${STRUT_H}×${STOCK_W} mm`
+            : `${STRUT_H_IN} × ${STOCK_W_IN}`;
 
           const full = new THREE.Mesh(
             new THREE.BoxGeometry(0.52, 0.22, 0.18),
