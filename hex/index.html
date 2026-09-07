@@ -886,9 +886,10 @@
 
       if (showWood && view === 'stock') {
         if (STEPS[step].machineVisual === 'tableRip') {
-          // MATERIALS: stack of PDF 2×6 stock (RAW_STOCK_QTY) → rip → matched halves.
-          // Board mesh proportions from FULL_2X6_W × STRUT_H × RAW_STOCK_LEN (950ad3b).
-          if (split) addMaterialsPad(1.55, 1.2);
+          // MATERIALS: stack of PDF 2×6 stock (RAW_STOCK_QTY) → rip → two stacks of halves.
+          // Board mesh proportions from FULL_2X6_W × STRUT_H × RAW_STOCK_LEN (950ad3b);
+          // halves use STOCK_W × STRUT_H × RAW_STOCK_LEN.
+          if (split) addMaterialsPad(1.70, 1.2);
           const halfLabel = units === 'mm'
             ? `${STRUT_H}×${STOCK_W} mm`
             : `${STRUT_H_IN} × ${STOCK_W_IN}`;
@@ -936,22 +937,29 @@
           woodTarget.add(arr);
           woodTarget.add(makeLabel('rip in half', new THREE.Vector3(0.72, stackTopY + 0.09, 0)));
 
-          // Halves: same proportions as ripped stock, scaled up slightly for read vs thin stack boards.
-          const halfScale = 2.4;
-          const halfFaceW = faceW * (STOCK_W / FULL_2X6_W) * halfScale;
-          const halfFaceH = faceH * halfScale;
-          const halfFaceL = Math.min(faceL, 0.85);
-          const halfGeo = new THREE.BoxGeometry(halfFaceW, halfFaceH, halfFaceL);
-          const halfX0 = 0.92;
-          [halfX0, halfX0 + halfFaceW + 0.04].forEach((x) => {
-            const half = new THREE.Mesh(halfGeo, woodMat);
-            half.rotation.y = yaw;
-            half.position.set(x, stackMidY, 0);
-            woodTarget.add(half);
-            addDarkOutline(half);
-          });
-          woodTarget.add(makeLabel(halfLabel, new THREE.Vector3(1.00, stackTopY + 0.09, 0)));
-          woodTarget.add(makeLabel('matched pair', new THREE.Vector3(1.00, stackBaseY - 0.08, 0)));
+          // Halves: two stacks of RAW_STOCK_QTY (= 64 pieces). Proportions STOCK_W × STRUT_H × RAW_STOCK_LEN.
+          // Same stack math / gaps as PDF stock (abaea3e); no halfScale — unit-pure mesh ratios.
+          const halfFaceW = faceH * (STOCK_W / STRUT_H);
+          const halfFaceH = faceH;
+          const halfFaceL = faceL;
+          // Gap between stacks ≈ board gap scale, but wide enough that yaw does not merge columns.
+          const halfStackGap = Math.max(halfFaceW * 1.15, 0.08);
+          const halfX0 = 0.86;
+          const halfX1 = halfX0 + halfFaceW + halfStackGap;
+          const halvesMidX = (halfX0 + halfX1) / 2;
+          for (const hx of [halfX0, halfX1]) {
+            for (let i = 0; i < n; i++) {
+              const half = new THREE.Mesh(new THREE.BoxGeometry(halfFaceW, halfFaceH, halfFaceL), stackMat);
+              half.frustumCulled = false;
+              half.rotation.y = yaw;
+              half.position.set(hx, stackBaseY + halfFaceH / 2 + i * (halfFaceH + gap), 0);
+              woodTarget.add(half);
+              addDarkOutline(half);
+            }
+          }
+          // One qty callout + dims once (no per-board dim spam).
+          woodTarget.add(makeLabel(halfLabel, new THREE.Vector3(halvesMidX, stackTopY + 0.09, 0)));
+          woodTarget.add(makeLabel(`${n} × 2  ·  ${n * 2} halves`, new THREE.Vector3(halvesMidX, stackBaseY - 0.08, 0)));
         }
         if (STEPS[step].machineVisual === 'none') {
           // Optional finish — no saw; stained matched pairs
