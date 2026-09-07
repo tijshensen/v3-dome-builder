@@ -83,6 +83,51 @@
       overflow: auto;
       z-index: 6;
       height: 100%;
+      transition: flex-basis 0.18s ease, width 0.18s ease, min-width 0.18s ease, max-width 0.18s ease, padding 0.18s ease;
+    }
+    .ui-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+    .ui-head h1 { flex: 1 1 auto; margin: 0; min-width: 0; }
+    .ui-collapse-btn {
+      flex: 0 0 auto;
+      padding: 4px 8px;
+      font-size: 11px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    /* Collapsed: slim reopen rail; graph-main grows via flex */
+    .app.sidebar-collapsed .ui {
+      flex: 0 0 44px;
+      width: 44px;
+      min-width: 44px;
+      max-width: 44px;
+      padding: 8px 4px;
+      overflow: hidden;
+    }
+    .app.sidebar-collapsed .ui > *:not(.ui-head) {
+      display: none !important;
+    }
+    .app.sidebar-collapsed .ui-head {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      margin: 0;
+      height: 100%;
+    }
+    .app.sidebar-collapsed .ui-head h1 {
+      display: none !important;
+    }
+    .app.sidebar-collapsed .ui-collapse-btn {
+      width: 100%;
+      flex: 1 1 auto;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      padding: 10px 4px;
+      letter-spacing: 0.04em;
     }
     .graph-main {
       flex: 1 1 auto;
@@ -363,8 +408,11 @@
 <body>
   <canvas id="c" aria-hidden="true"></canvas>
   <div class="app">
-    <aside class="ui" aria-label="Shop controls">
-      <h1>Trillium 5/8 3v — Hex panel frames</h1>
+    <aside class="ui" id="uiSidebar" aria-label="Shop controls">
+      <div class="ui-head">
+        <h1>Trillium 5/8 3v — Hex panel frames</h1>
+        <button type="button" class="ui-collapse-btn" id="btnSidebarToggle" aria-controls="uiSidebar" aria-expanded="true" title="Hide menu">Hide menu ▸</button>
+      </div>
       <div class="row">
         <button id="btnHex" class="active" type="button">Hex ×73</button>
         <button id="btnPent" class="secondary" type="button" disabled title="Pent polish paused until Hex passes review">Pent ×30</button>
@@ -748,6 +796,7 @@ import * as THREE from 'three';
     let step = Math.max(0, Math.min(STEPS.length - 1, parseInt(_qs.get('step') || '0', 10) || 0));
     let units = 'in'; // imperial primary for Hex review
     const THEME_KEY = 'hex-theme';
+    const SIDEBAR_KEY = 'hex-sidebar-collapsed';
     /** Default dark — matches prior look; light is opt-in via toggle + localStorage. */
     function readStoredTheme() {
       try {
@@ -777,6 +826,37 @@ import * as THREE from 'three';
       }
     }
     applyThemeDom();
+
+    /** Default expanded — collapse is opt-in via toggle + localStorage. */
+    function readStoredSidebarCollapsed() {
+      try {
+        return localStorage.getItem(SIDEBAR_KEY) === '1';
+      } catch (e) {}
+      return false;
+    }
+    let sidebarCollapsed = readStoredSidebarCollapsed();
+    function applySidebarDom() {
+      const app = document.querySelector('.app');
+      const btn = document.getElementById('btnSidebarToggle');
+      if (app) app.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+      if (btn) {
+        btn.textContent = sidebarCollapsed ? '◂ Show menu' : 'Hide menu ▸';
+        btn.setAttribute('aria-expanded', sidebarCollapsed ? 'false' : 'true');
+        btn.title = sidebarCollapsed ? 'Show menu' : 'Hide menu';
+      }
+    }
+    let _sidebarRefitTimer = 0;
+    function setSidebarCollapsed(next) {
+      sidebarCollapsed = !!next;
+      try { localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed ? '1' : '0'); } catch (e) {}
+      applySidebarDom();
+      // Refit shop graph after layout width change
+      clearTimeout(_sidebarRefitTimer);
+      _sidebarRefitTimer = setTimeout(() => {
+        try { fitGraphView(); } catch (e) {}
+      }, 100);
+    }
+    applySidebarDom();
 
     if (_qs.get('pause') === '1') window.__pause = true;
 
@@ -2442,6 +2522,9 @@ import * as THREE from 'three';
     document.getElementById('uMM').onclick = () => { units = 'mm'; sync(); };
     document.getElementById('btnTheme').onclick = () => {
       setTheme(theme === 'light' ? 'dark' : 'light');
+    };
+    document.getElementById('btnSidebarToggle').onclick = () => {
+      setSidebarCollapsed(!sidebarCollapsed);
     };
     applyThemeScenes();
     // Fit graph after first layout (main viewport)
