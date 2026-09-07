@@ -15,6 +15,45 @@
       --pent: #f0a202;
       --wood: #c48a4a;
       --accent: #7dcea0;
+      --btn: #2a3140;
+      --btn-active: #3a5a8a;
+      --btn-hover-border: #4a5568;
+      --inset: #161a22;
+      --preview-bg: #0e1014;
+      --preview-border: #252b36;
+      --modal-bg: #121418;
+      --modal-bar: #1c2028;
+      --machine-card: #f5c518;
+      --backdrop: #00000099;
+      --label-bg: #1c2028cc;
+      --label-fg: #e8eaed;
+      --label-border: #2e3542;
+      --scene-bg: #121418;
+    }
+    html[data-theme="light"] {
+      --bg: #eef0f3;
+      --panel: #ffffff;
+      --line: #c5cad3;
+      --text: #1a1d24;
+      --muted: #5c6570;
+      --hex: #1a6fd4;
+      --pent: #b86a00;
+      --wood: #8b5a2b;
+      --accent: #2a8f5c;
+      --btn: #e4e7ec;
+      --btn-active: #c8daf0;
+      --btn-hover-border: #8a93a3;
+      --inset: #f4f6f8;
+      --preview-bg: #e4e7ec;
+      --preview-border: #c5cad3;
+      --modal-bg: #eef0f3;
+      --modal-bar: #ffffff;
+      --machine-card: #b8860b;
+      --backdrop: #00000055;
+      --label-bg: #ffffffee;
+      --label-fg: #1a1d24;
+      --label-border: #c5cad3;
+      --scene-bg: #eef0f3;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
@@ -30,11 +69,11 @@
     h2 { font-size: 12px; margin: 12px 0 6px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
     .row { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
     button {
-      background: #2a3140; color: var(--text); border: 1px solid var(--line);
+      background: var(--btn); color: var(--text); border: 1px solid var(--line);
       border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit;
     }
-    button:hover:not(:disabled) { border-color: #4a5568; }
-    button.active { background: #3a5a8a; border-color: var(--hex); }
+    button:hover:not(:disabled) { border-color: var(--btn-hover-border); }
+    button.active { background: var(--btn-active); border-color: var(--hex); }
     button.secondary { opacity: 0.45; }
     button:disabled { opacity: 0.35; cursor: not-allowed; }
     .step { width: 100%; text-align: left; font-size: 12px; padding: 5px 8px; }
@@ -43,13 +82,13 @@
     .hint a { color: var(--accent); }
     .legend span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
     .cutbox {
-      background: #161a22; border: 1px solid var(--line); border-radius: 8px;
+      background: var(--inset); border: 1px solid var(--line); border-radius: 8px;
       padding: 8px 10px; font-size: 12px; color: var(--muted); white-space: pre-wrap;
       margin-top: 4px;
     }
-    .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: #2a3140; color: var(--muted); margin-left: 4px; }
+    .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: var(--btn); color: var(--muted); margin-left: 4px; }
     .machinesetup {
-      background: #161a22; border: 1px solid var(--hex); border-radius: 8px;
+      background: var(--inset); border: 1px solid var(--hex); border-radius: 8px;
       padding: 8px 10px; margin-top: 8px; font-size: 12px;
     }
     .machinesetup .ms-title {
@@ -63,7 +102,7 @@
     .vizrow { display: none !important; }
     .hex-meta {
       margin: 8px 0 0; border: 1px solid var(--line); border-radius: 8px;
-      background: #161a22; padding: 6px 10px; font-size: 12px; color: var(--muted);
+      background: var(--inset); padding: 6px 10px; font-size: 12px; color: var(--muted);
     }
     .hex-meta summary {
       cursor: pointer; font-weight: 650; color: var(--text);
@@ -87,7 +126,7 @@
       .flow-cards, .flow-cards.two-col, .flow-cards.one-col { grid-template-columns: 1fr; }
     }
     .flow-card {
-      background: #161a22;
+      background: var(--inset);
       border: 1px solid var(--line);
       border-radius: 10px;
       padding: 8px;
@@ -99,7 +138,7 @@
       gap: 6px;
       min-width: 0;
     }
-    .flow-card:hover { border-color: #4a5568; }
+    .flow-card:hover { border-color: var(--btn-hover-border); }
     .flow-card:focus-visible { outline: 2px solid var(--hex); outline-offset: 2px; }
     .flow-card[hidden] { display: none !important; }
     .flow-card .fc-title {
@@ -107,7 +146,7 @@
       text-transform: uppercase; color: var(--muted); margin: 0;
     }
     .flow-card.materials .fc-title { color: var(--wood); }
-    .flow-card.machine .fc-title { color: #f5c518; }
+    .flow-card.machine .fc-title { color: var(--machine-card); }
     .flow-card.output .fc-title { color: var(--accent); }
     .flow-card .fc-callout {
       font-size: 11px; color: var(--text); line-height: 1.3;
@@ -115,7 +154,7 @@
     }
     .flow-card .fc-preview {
       width: 100%; aspect-ratio: 4 / 3; border-radius: 6px;
-      background: #0e1014; border: 1px solid #252b36;
+      background: var(--preview-bg); border: 1px solid var(--preview-border);
       object-fit: cover; display: block;
     }
     .flow-hint { font-size: 11px; color: var(--muted); margin: 0 0 4px; }
@@ -124,18 +163,18 @@
       border: 1px solid var(--line);
       border-radius: 12px;
       padding: 0;
-      background: #121418;
+      background: var(--modal-bg);
       color: var(--text);
       width: min(920px, calc(100vw - 32px));
       max-width: calc(100vw - 32px);
       height: min(640px, calc(100vh - 48px));
       max-height: calc(100vh - 48px);
     }
-    .role-modal::backdrop { background: #00000099; }
+    .role-modal::backdrop { background: var(--backdrop); }
     .role-modal-bar {
       display: flex; align-items: center; gap: 8px;
       padding: 10px 12px; border-bottom: 1px solid var(--line);
-      background: #1c2028;
+      background: var(--modal-bar);
     }
     .role-modal-bar strong { flex: 1; font-size: 13px; }
     .role-modal-body { position: relative; height: calc(100% - 46px); }
@@ -154,6 +193,7 @@
     <div class="row">
       <button id="uIN" class="active" type="button">in</button>
       <button id="uMM" type="button">mm</button>
+      <button id="btnTheme" type="button" title="Toggle dark / light">Dark</button>
       <button id="btnReset" type="button">Reset view</button>
     </div>
     <div class="row" id="steps"></div>
@@ -392,6 +432,37 @@ import * as THREE from 'three';
     const _qs = new URLSearchParams(location.search);
     let step = Math.max(0, Math.min(STEPS.length - 1, parseInt(_qs.get('step') || '0', 10) || 0));
     let units = 'in'; // imperial primary for Hex review
+    const THEME_KEY = 'hex-theme';
+    /** Default dark — matches prior look; light is opt-in via toggle + localStorage. */
+    function readStoredTheme() {
+      try {
+        const v = localStorage.getItem(THEME_KEY);
+        if (v === 'light' || v === 'dark') return v;
+      } catch (e) {}
+      return 'dark';
+    }
+    let theme = readStoredTheme();
+    function themeSceneHex() {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue('--scene-bg').trim();
+      if (raw && raw.startsWith('#')) return parseInt(raw.slice(1), 16);
+      return theme === 'light' ? 0xeef0f3 : 0x121418;
+    }
+    function themePreviewHex() {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue('--preview-bg').trim();
+      if (raw && raw.startsWith('#')) return parseInt(raw.slice(1), 16);
+      return theme === 'light' ? 0xe4e7ec : 0x0e1014;
+    }
+    function applyThemeDom() {
+      document.documentElement.setAttribute('data-theme', theme);
+      const btn = document.getElementById('btnTheme');
+      if (btn) {
+        btn.textContent = theme === 'light' ? 'Light' : 'Dark';
+        btn.classList.toggle('active', theme === 'light');
+        btn.title = theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode';
+      }
+    }
+    applyThemeDom();
+
     if (_qs.get('pause') === '1') window.__pause = true;
 
     const canvas = document.getElementById('c');
@@ -407,7 +478,7 @@ import * as THREE from 'three';
     document.body.appendChild(labelRenderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x121418);
+    scene.background = new THREE.Color(themeSceneHex());
     const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 50);
     camera.position.set(1.6, 1.2, 2.2);
 
@@ -466,7 +537,11 @@ import * as THREE from 'three';
     function makeLabel(text, pos) {
       const el = document.createElement('div');
       el.textContent = text;
-      el.style.cssText = 'background:#1c2028cc;color:#e8eaed;padding:2px 6px;border-radius:4px;font:11px/1.2 system-ui;white-space:nowrap;border:1px solid #2e3542';
+      const cs = getComputedStyle(document.documentElement);
+      const bg = (cs.getPropertyValue('--label-bg') || '#1c2028cc').trim();
+      const fg = (cs.getPropertyValue('--label-fg') || '#e8eaed').trim();
+      const bd = (cs.getPropertyValue('--label-border') || '#2e3542').trim();
+      el.style.cssText = `background:${bg};color:${fg};padding:2px 6px;border-radius:4px;font:11px/1.2 system-ui;white-space:nowrap;border:1px solid ${bd}`;
       const obj = new CSS2DObject(el);
       obj.position.copy(pos);
       return obj;
@@ -900,7 +975,7 @@ import * as THREE from 'three';
     previewRenderer.setPixelRatio(1);
     previewRenderer.setSize(320, 240, false);
     const previewScene = new THREE.Scene();
-    previewScene.background = new THREE.Color(0x0e1014);
+    previewScene.background = new THREE.Color(themePreviewHex());
     previewScene.add(new THREE.HemisphereLight(0xc8d4e8, 0x2a2118, 1.1));
     const pSun = new THREE.DirectionalLight(0xfff3e0, 1.35);
     pSun.position.set(2, 3, 2);
@@ -1295,7 +1370,7 @@ import * as THREE from 'three';
     document.querySelector('.role-modal-body').appendChild(modalLabelRenderer.domElement);
 
     const modalScene = new THREE.Scene();
-    modalScene.background = new THREE.Color(0x121418);
+    modalScene.background = new THREE.Color(themeSceneHex());
     modalScene.add(new THREE.HemisphereLight(0xc8d4e8, 0x2a2118, 1.1));
     const mSun = new THREE.DirectionalLight(0xfff3e0, 1.4);
     mSun.position.set(2, 3, 2);
@@ -1512,12 +1587,35 @@ import * as THREE from 'three';
       rebuild();
     }
 
+    function applyThemeScenes() {
+      const sceneHex = themeSceneHex();
+      const previewHex = themePreviewHex();
+      scene.background = new THREE.Color(sceneHex);
+      modalScene.background = new THREE.Color(sceneHex);
+      previewScene.background = new THREE.Color(previewHex);
+      if (renderer && renderer.setClearColor) renderer.setClearColor(sceneHex, 1);
+      if (modalRenderer && modalRenderer.setClearColor) modalRenderer.setClearColor(sceneHex, 1);
+    }
+
+    function setTheme(next) {
+      theme = next === 'light' ? 'light' : 'dark';
+      try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+      applyThemeDom();
+      applyThemeScenes();
+      // Rebuild so CSS2D labels + card preview captures pick up new bg/colors
+      sync();
+    }
+
     document.getElementById('uIN').onclick = () => { units = 'in'; sync(); };
     document.getElementById('uMM').onclick = () => { units = 'mm'; sync(); };
+    document.getElementById('btnTheme').onclick = () => {
+      setTheme(theme === 'light' ? 'dark' : 'light');
+    };
     document.getElementById('btnReset').onclick = () => {
       camera.position.set(1.35, 1.15, 1.85);
       controls.target.set(0, 0.25, 0);
     };
+    applyThemeScenes();
     function resize() {
       const w = innerWidth, h = innerHeight;
       renderer.setSize(w, h, false);
