@@ -356,6 +356,8 @@
     }
     .role-modal-setup[hidden],
     .role-modal-body:not(.has-setup) .role-modal-setup { display: none !important; }
+    .role-modal-setup.materiallist .ms-title { color: var(--wood); }
+    .role-modal-setup.materiallist { border-color: color-mix(in srgb, var(--wood) 40%, var(--line)); }
   </style>
 </head>
 <body>
@@ -375,7 +377,7 @@
       </div>
       <div class="row" id="steps"></div>
       <div class="dims" id="dims"></div>
-      <p class="flow-hint">Main view is the shop graph · click a machine node for 3D + setup</p>
+      <p class="flow-hint">Main view is the shop graph · click a node for 3D + side panel</p>
       <details class="step-cards-detail" id="stepCardsDetail">
         <summary>Step detail cards (optional)</summary>
         <div class="flow-cards" id="flowCards" aria-label="Step materials, machine, and output">
@@ -405,7 +407,7 @@
         <div class="meta-body" id="hexMetaBody"></div>
       </details>
       <div class="hint">
-        Machine nodes open 3D + setup · Esc closes<br>
+        Machine nodes: 3D + setup · material nodes: 3D + list · Esc closes<br>
         <span class="legend"><span style="background:#c48a4a"></span>strut</span>
         <span class="legend"><span style="background:#5b3a1e"></span>6.5° bevel</span>
         <span class="legend"><span style="background:#7dcea0"></span>jig</span>
@@ -2099,7 +2101,8 @@ import * as THREE from 'three';
       graphModalNodeId = null;
       modalRole = role;
       const title = roleState[role].title + (roleState[role].callout ? ' — ' + roleState[role].callout : '');
-      fillModalSetup(role === 'machine' ? STEPS[step] : null);
+      if (role === 'machine') fillModalSide({ kind: 'machine', stepObj: STEPS[step] });
+      else fillModalSide(null);
       presentModalRoot(root, title);
     }
 
@@ -2125,11 +2128,13 @@ import * as THREE from 'three';
       }
       const title = `${n.kind === 'machine' ? 'Machine' : 'Material'}: ${n.title}` +
         (st.callout ? ' — ' + st.callout : '');
-      // Machine nodes with machineSetup → 3D + written setup; materials stay 3D-only
+      // Machine → Machine Setup; material → Material list (same split layout)
       if (n.kind === 'machine' && typeof n.stepId === 'number') {
-        fillModalSetup(STEPS[n.stepId]);
+        fillModalSide({ kind: 'machine', stepObj: STEPS[n.stepId] });
+      } else if (n.kind === 'material') {
+        fillModalSide({ kind: 'material', node: n });
       } else {
-        fillModalSetup(null);
+        fillModalSide(null);
       }
       presentModalRoot(st.root, title);
     }
@@ -2151,7 +2156,7 @@ import * as THREE from 'three';
         if (st && st.root.parent === modalHost) graphHold.add(st.root);
       }
       modalHost.clear();
-      fillModalSetup(null);
+      fillModalSide(null);
       const wasGraph = graphModalNodeId;
       modalRole = null;
       graphModalNodeId = null;
@@ -2211,13 +2216,103 @@ import * as THREE from 'three';
       return { title, tools, settings };
     }
 
-    /** Fill (or hide) the modal setup panel. Materials stay 3D-only. */
-    function fillModalSetup(stepObj) {
+    /**
+     * Material list / callout for graph materialKey — qty + dims from panel-specs
+     * helpers (fmt / STOCK_W / RAW_STOCK_QTY / etc.). Do not invent dims.
+     */
+    function materialListContent(n) {
+      if (!n || n.kind !== 'material' || !n.materialKey) return null;
+      const k = n.materialKey;
+      const title = 'Materials';
+      /** @type {string[]} */
+      let lines = [];
+      if (k === 'pdf-2x6') {
+        lines = [
+          `Qty: (${RAW_STOCK_QTY})`,
+          `Dims: ${stockDimsLabel()}`,
+          'Kiln-dried 2×6 · PDF stock'
+        ];
+      } else if (k === 'ripped-half') {
+        lines = [
+          `Qty: ${RAW_STOCK_QTY} × 2`,
+          `Dims: ${halfDimsLabel()}`,
+          'Matched pairs after rip'
+        ];
+      } else if (k === 'optional-finish') {
+        lines = [
+          'Qty: matched pair',
+          `Dims: ${halfDimsLabel()}`
+        ];
+      } else if (k === 'blank') {
+        lines = [
+          `Qty: ${HEX.qty * 3}`,
+          `Dims: ${blankWhlLabel()}`,
+          `${HEX.qty} panels × 3`
+        ];
+      } else if (k === 'beveled') {
+        lines = [
+          `Dims: ${finishedDimsLabel()} + ${BEVEL_DEG}°`
+        ];
+      } else if (k === 'jig') {
+        lines = [
+          `Base ${fmt(HEX.c)}`,
+          `Arcs ${fmt(HEX.a)} / ${fmt(HEX.b)}`
+        ];
+      } else if (k === 'jig-stops') {
+        lines = ['Jig + backing stops'];
+      } else if (k === 'mitered') {
+        lines = [`Miters: ${HEX.base}° / ${HEX.apex}°`];
+      } else if (k === 'ears') {
+        lines = [`Compound ears + ${BEVEL_DEG}°`];
+      } else if (k === 'assembled') {
+        lines = ['Assembled frame'];
+      } else if (k === 'done') {
+        lines = [`Qty: ${HEX.qty} hex panels`];
+      } else {
+        const c = nodeCallout(n);
+        if (!c) return null;
+        lines = [c];
+      }
+      return { title, nodeTitle: n.title, lines };
+    }
+
+    /**
+     * Fill (or hide) the modal side panel: Machine Setup OR Material list.
+     * @param {{ kind: 'machine', stepObj: object } | { kind: 'material', node: object } | null} spec
+     */
+    function fillModalSide(spec) {
       const panel = document.getElementById('roleModalSetup');
       const body = document.querySelector('.role-modal-body');
       if (!panel || !body) return;
-      const content = machineSetupContent(stepObj);
-      if (!content) {
+
+      let html = '';
+      let mode = '';
+      if (spec && spec.kind === 'machine') {
+        const content = machineSetupContent(spec.stepObj);
+        if (content) {
+          mode = 'machine';
+          const lis = content.settings.map((line) => `<li>${line}</li>`).join('');
+          html =
+            `<div class="ms-title">${content.title}</div>` +
+            (content.tools ? `<div class="ms-tools">${content.tools}</div>` : '') +
+            (lis ? `<ul>${lis}</ul>` : '');
+        }
+      } else if (spec && spec.kind === 'material') {
+        const content = materialListContent(spec.node);
+        if (content) {
+          mode = 'material';
+          const lis = content.lines.map((line) => `<li>${line}</li>`).join('');
+          html =
+            `<div class="ms-title">${content.title}</div>` +
+            (content.nodeTitle ? `<div class="ms-tools">${content.nodeTitle}</div>` : '') +
+            (lis ? `<ul>${lis}</ul>` : '');
+        }
+      }
+
+      // Keep .machinesetup for shared ms-* typography; materiallist only tints title
+      panel.classList.add('machinesetup');
+      panel.classList.toggle('materiallist', mode === 'material');
+      if (!html) {
         panel.innerHTML = '';
         panel.hidden = true;
         body.classList.remove('has-setup');
@@ -2225,11 +2320,7 @@ import * as THREE from 'three';
       }
       panel.hidden = false;
       body.classList.add('has-setup');
-      const lis = content.settings.map((line) => `<li>${line}</li>`).join('');
-      panel.innerHTML =
-        `<div class="ms-title">${content.title}</div>` +
-        (content.tools ? `<div class="ms-tools">${content.tools}</div>` : '') +
-        (lis ? `<ul>${lis}</ul>` : '');
+      panel.innerHTML = html;
     }
 
     /** Sidebar Machine Setup removed — lives in machine-node modal. */
@@ -2314,6 +2405,8 @@ import * as THREE from 'three';
     }
 
     function sync() {
+      const reopenNodeId = graphModalNodeId;
+      const reopenRole = modalRole;
       document.getElementById('uIN').classList.toggle('active', units === 'in');
       document.getElementById('uMM').classList.toggle('active', units === 'mm');
       renderSteps();
@@ -2321,6 +2414,9 @@ import * as THREE from 'three';
       setMachineSetup();
       setCutList();
       rebuild();
+      // Unit toggle (and theme) refresh side-panel text via reopen
+      if (reopenNodeId) openGraphNodeModal(reopenNodeId);
+      else if (reopenRole) openRoleModal(reopenRole);
     }
 
     function applyThemeScenes() {
