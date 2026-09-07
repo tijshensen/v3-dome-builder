@@ -331,6 +331,18 @@
       font-size: 10px; color: var(--muted); line-height: 1.25;
       min-height: 2.4em;
     }
+    /* Material nodes: Qty + Dims (+ optional muted angle/process) */
+    .graph-node .gn-qty,
+    .graph-node .gn-dims {
+      font-size: 10px; color: var(--muted); line-height: 1.25;
+      margin: 0;
+    }
+    .graph-node .gn-qty { color: var(--text); font-weight: 600; }
+    .graph-node .gn-dims { color: var(--muted); }
+    .graph-node .gn-note {
+      font-size: 9px; color: var(--muted); line-height: 1.2;
+      opacity: 0.82; margin: 0;
+    }
     .graph-node .gn-thumb {
       width: 100%; aspect-ratio: 4 / 3; border-radius: 6px;
       background: var(--preview-bg); border: 1px solid var(--preview-border);
@@ -685,7 +697,7 @@ import * as THREE from 'three';
      * Machine output feeds shared materials; later machines fan-in from those.
      */
     const NODE_W = 132;
-    const NODE_H = 148;
+    const NODE_H = 162;
 
     function halfDimsLabel() {
       return units === 'mm' ? `${STRUT_H}×${STOCK_W} mm` : `${STRUT_H_IN} × ${STOCK_W_IN}`;
@@ -765,6 +777,75 @@ import * as THREE from 'three';
       return GRAPH.nodes.find((n) => n.id === id);
     }
 
+    /**
+     * Material graph callout parts — qty + outer dims from panel-specs only.
+     * Optional muted note for angle/process (mitered, ears, bevel). No invented scrap dims.
+     * @returns {{ qty: string, dims: string, note: string }}
+     */
+    function materialCalloutParts(k) {
+      if (k === 'pdf-2x6') {
+        return { qty: `(${RAW_STOCK_QTY})`, dims: stockDimsLabel(), note: '' };
+      }
+      if (k === 'ripped-half') {
+        return { qty: `${RAW_STOCK_QTY} × 2`, dims: halfDimsLabel(), note: '' };
+      }
+      if (k === 'optional-finish') {
+        return { qty: 'matched pair', dims: halfDimsLabel(), note: '' };
+      }
+      if (k === 'blank') {
+        return { qty: String(HEX.qty * 3), dims: blankWhlLabel(), note: '' };
+      }
+      if (k === 'beveled') {
+        // Finished face locked in panel-specs; same blank count; bevel as note
+        return { qty: String(HEX.qty * 3), dims: finishedDimsLabel(), note: `${BEVEL_DEG}° bevel` };
+      }
+      if (k === 'jig') {
+        // Geometry marks only — no stock qty
+        return { qty: '', dims: `base ${fmt(HEX.c)} · arcs ${fmt(HEX.a)}`, note: '' };
+      }
+      if (k === 'jig-stops') {
+        return { qty: '', dims: '', note: 'jig + backing stops' };
+      }
+      if (k === 'mitered') {
+        return {
+          qty: String(HEX.qty * 3),
+          dims: finishedDimsLabel(),
+          note: `${HEX.base}° / ${HEX.apex}° miters`
+        };
+      }
+      if (k === 'ears') {
+        return {
+          qty: String(HEX.qty * 3),
+          dims: finishedDimsLabel(),
+          note: `compound ears + ${BEVEL_DEG}°`
+        };
+      }
+      if (k === 'assembled') {
+        // One frame shown; outer sides locked on HEX — no scrap dims
+        return {
+          qty: '1',
+          dims: `${fmt(HEX.a)} / ${fmt(HEX.b)} / ${fmt(HEX.c)}`,
+          note: 'assembled frame'
+        };
+      }
+      if (k === 'done') {
+        return {
+          qty: `${HEX.qty} hex panels`,
+          dims: `${fmt(HEX.a)} / ${fmt(HEX.b)} / ${fmt(HEX.c)}`,
+          note: ''
+        };
+      }
+      return { qty: '', dims: '', note: '' };
+    }
+
+    function formatMaterialCallout(parts) {
+      const bits = [];
+      if (parts.qty) bits.push(parts.qty);
+      if (parts.dims) bits.push(parts.dims);
+      if (parts.note) bits.push(parts.note);
+      return bits.join(' · ');
+    }
+
     function nodeCallout(n) {
       if (n.kind === 'machine') {
         const mv = n.machineVisual;
@@ -777,19 +858,7 @@ import * as THREE from 'three';
         if (mv === 'drill') return 'drill / driver';
         return 'machine';
       }
-      const k = n.materialKey;
-      if (k === 'pdf-2x6') return `(${RAW_STOCK_QTY})  ${stockDimsLabel()}`;
-      if (k === 'ripped-half') return `${RAW_STOCK_QTY} × 2  ·  ${halfDimsLabel()}`;
-      if (k === 'optional-finish') return `matched pair · ${halfDimsLabel()}`;
-      if (k === 'blank') return `${HEX.qty * 3} · ${blankWhlLabel()}`;
-      if (k === 'beveled') return `${finishedDimsLabel()} + ${BEVEL_DEG}°`;
-      if (k === 'jig') return `base ${fmt(HEX.c)} · arcs ${fmt(HEX.a)}`;
-      if (k === 'jig-stops') return 'jig + backing stops';
-      if (k === 'mitered') return `${HEX.base}° / ${HEX.apex}° miters`;
-      if (k === 'ears') return `compound ears + ${BEVEL_DEG}°`;
-      if (k === 'assembled') return 'assembled frame';
-      if (k === 'done') return `${HEX.qty} hex panels`;
-      return '';
+      return formatMaterialCallout(materialCalloutParts(n.materialKey));
     }
 
     const _qs = new URLSearchParams(location.search);
@@ -1777,10 +1846,33 @@ import * as THREE from 'three';
         btn.innerHTML =
           `<div class="gn-kind">${n.kind}</div>` +
           `<div class="gn-title"></div>` +
-          `<div class="gn-callout"></div>` +
+          (n.kind === 'machine'
+            ? `<div class="gn-callout"></div>`
+            : `<div class="gn-qty" hidden></div>` +
+              `<div class="gn-dims" hidden></div>` +
+              `<div class="gn-note" hidden></div>`) +
           `<img class="gn-thumb" alt="" />`;
         btn.querySelector('.gn-title').textContent = n.title;
-        btn.querySelector('.gn-callout').textContent = callout;
+        if (n.kind === 'machine') {
+          btn.querySelector('.gn-callout').textContent = callout;
+        } else {
+          const parts = materialCalloutParts(n.materialKey);
+          const qtyEl = btn.querySelector('.gn-qty');
+          const dimsEl = btn.querySelector('.gn-dims');
+          const noteEl = btn.querySelector('.gn-note');
+          if (parts.qty) {
+            qtyEl.hidden = false;
+            qtyEl.textContent = `Qty: ${parts.qty}`;
+          }
+          if (parts.dims) {
+            dimsEl.hidden = false;
+            dimsEl.textContent = `Dims: ${parts.dims}`;
+          }
+          if (parts.note) {
+            noteEl.hidden = false;
+            noteEl.textContent = parts.note;
+          }
+        }
         const img = btn.querySelector('.gn-thumb');
         if (st && st.preview) img.src = st.preview;
         btn.addEventListener('click', (ev) => {
