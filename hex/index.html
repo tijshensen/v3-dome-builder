@@ -577,7 +577,8 @@ import * as THREE from 'three';
           settings: () => [
             `Prefer ${TOOL_MITER_SAW} for crosscutting ripped stock to ~${fmt(BLANK_LEN)}`,
             'Use a stop block for repeat blank length on the miter saw',
-            'No bevel / no compound for this step'
+            'No bevel / no compound for this step',
+            blankStockLeftoverSetupLine()
           ]
         }
       },
@@ -793,7 +794,7 @@ import * as THREE from 'three';
         return { qty: 'matched pair', dims: halfDimsLabel(), note: '' };
       }
       if (k === 'blank') {
-        return { qty: String(HEX.qty * 3), dims: blankWhlLabel(), note: '' };
+        return { qty: String(HEX.qty * 3), dims: blankWhlLabel(), note: blankStockLeftoverNote() };
       }
       if (k === 'beveled') {
         // Finished face locked in panel-specs; same blank count; bevel as note
@@ -851,7 +852,7 @@ import * as THREE from 'three';
         const mv = n.machineVisual;
         if (mv === 'tableRip') return `${TOOL_TABLE_SAW} · rip`;
         if (mv === 'tableBevel') return `${TOOL_TABLE_SAW} · ${BEVEL_DEG}°`;
-        if (mv === 'miterCrosscut') return `${TOOL_MITER_SAW} · crosscut`;
+        if (mv === 'miterCrosscut') return `${TOOL_MITER_SAW} · crosscut · ${blankStockLeftoverNote()}`;
         if (mv === 'miterSimple') return `${TOOL_MITER_SAW} · miters`;
         if (mv === 'miterCompound') return `${TOOL_MITER_SAW} · compound`;
         if (mv === 'handLayout') return 'hand layout · no saw';
@@ -1038,6 +1039,24 @@ import * as THREE from 'three';
       const h = fmt(STRUT_H);
       const l = fmt(BLANK_LEN);
       return `${w} × ${h} × ~${l}`;
+    }
+
+    /** Reasoned blanks per ripped half from one RAW_STOCK_LEN board (ignores kerf). */
+    const BLANKS_PER_RIPPED_HALF = 3;
+
+    /** Length leftover after n blanks from one full board: RAW_STOCK_LEN − n×BLANK_LEN. */
+    function blankStockLeftoverMm() {
+      return RAW_STOCK_LEN - BLANKS_PER_RIPPED_HALF * BLANK_LEN;
+    }
+
+    /** Muted Qty/Dims-style tip — unit-pure via fmt; approx / ignores kerf. */
+    function blankStockLeftoverNote() {
+      return `leftover ~${fmt(blankStockLeftoverMm())} after ${BLANKS_PER_RIPPED_HALF}× blanks (approx)`;
+    }
+
+    /** Cut blanks machineSetup line — derive leftover; do not hardcode one unit. */
+    function blankStockLeftoverSetupLine() {
+      return `~${BLANKS_PER_RIPPED_HALF} blanks per ripped half from ${fmt(RAW_STOCK_LEN)} → leftover ~${fmt(blankStockLeftoverMm())} (approx, ignores kerf)`;
     }
 
     function strutMesh(lengthMm, faceWmm = STRUT_W, mat = woodMat) {
@@ -2419,7 +2438,8 @@ import * as THREE from 'three';
         lines = [
           `Qty: ${HEX.qty * 3}`,
           `Dims: ${blankWhlLabel()}`,
-          `${HEX.qty} panels × 3`
+          `${HEX.qty} panels × 3`,
+          blankStockLeftoverNote()
         ];
       } else if (k === 'beveled') {
         lines = [
@@ -2523,7 +2543,8 @@ import * as THREE from 'three';
         lines = [
           `Strut blanks: ${HEX.qty * 3} (1 shown in 3D)`,
           `Blank w × h × l: ${blankWhlLabel()}`,
-          `From ripped halves · longest side ${fmt(HEX.a)} · ${HEX.qty} panels × 3`
+          `From ripped halves · longest side ${fmt(HEX.a)} · ${HEX.qty} panels × 3`,
+          blankStockLeftoverSetupLine()
         ];
       } else if (s.id === 3) {
         heading = 'Layout — jig';
