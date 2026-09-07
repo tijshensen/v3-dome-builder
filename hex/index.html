@@ -59,7 +59,7 @@
     html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
     #c { display: block; width: 100%; height: 100%; }
     .ui {
-      position: absolute; top: 12px; left: 12px; width: min(420px, calc(100% - 24px));
+      position: absolute; top: 12px; left: 12px; width: min(640px, calc(100% - 24px));
       background: color-mix(in srgb, var(--panel) 92%, transparent);
       border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
       backdrop-filter: blur(8px); max-height: calc(100% - 24px); overflow: auto;
@@ -159,6 +159,113 @@
     }
     .flow-hint { font-size: 11px; color: var(--muted); margin: 0 0 4px; }
 
+    /* Directed multigraph shop sequence (primary chrome) */
+    .graph-shell {
+      margin: 8px 0 6px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--inset);
+      overflow: hidden;
+    }
+    .graph-toolbar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 6px 8px; border-bottom: 1px solid var(--line);
+      font-size: 11px; color: var(--muted);
+    }
+    .graph-toolbar strong { color: var(--text); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .graph-toolbar button { padding: 3px 8px; font-size: 11px; }
+    .graph-viewport {
+      position: relative;
+      height: min(460px, 52vh);
+      min-height: 360px;
+      overflow: hidden;
+      cursor: grab;
+      touch-action: none;
+      background:
+        radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--line) 70%, transparent) 1px, transparent 0) 0 0 / 18px 18px;
+    }
+    .graph-viewport.panning { cursor: grabbing; }
+    .graph-world {
+      position: absolute; left: 0; top: 0;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+    .graph-edges {
+      position: absolute; left: 0; top: 0;
+      overflow: visible;
+      pointer-events: none;
+    }
+    .graph-edges path {
+      fill: none;
+      stroke: var(--muted);
+      stroke-width: 1.6;
+      opacity: 0.85;
+    }
+    .graph-edges path.fan {
+      stroke: var(--accent);
+      stroke-width: 2;
+      opacity: 1;
+    }
+    .graph-edges marker path { fill: var(--muted); }
+    .graph-node {
+      position: absolute;
+      width: 132px;
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 0 2px 10px #00000033;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .graph-node:hover { border-color: var(--btn-hover-border); }
+    .graph-node:focus-visible { outline: 2px solid var(--hex); outline-offset: 2px; }
+    .graph-node.material { border-color: color-mix(in srgb, var(--wood) 55%, var(--line)); }
+    .graph-node.machine { border-color: color-mix(in srgb, var(--machine-card) 60%, var(--line)); }
+    .graph-node.active {
+      border-color: var(--hex);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--hex) 45%, transparent);
+    }
+    .graph-node .gn-kind {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted); margin: 0;
+    }
+    .graph-node.material .gn-kind { color: var(--wood); }
+    .graph-node.machine .gn-kind { color: var(--machine-card); }
+    .graph-node .gn-title {
+      font-size: 12px; font-weight: 650; margin: 0; color: var(--text);
+      line-height: 1.2;
+    }
+    .graph-node .gn-callout {
+      font-size: 10px; color: var(--muted); line-height: 1.25;
+      min-height: 2.4em;
+    }
+    .graph-node .gn-thumb {
+      width: 100%; aspect-ratio: 4 / 3; border-radius: 6px;
+      background: var(--preview-bg); border: 1px solid var(--preview-border);
+      object-fit: cover; display: block;
+    }
+    details.step-cards-detail {
+      margin: 6px 0 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--inset);
+      padding: 4px 8px 8px;
+    }
+    details.step-cards-detail > summary {
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 650;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 4px 0;
+    }
+
     .role-modal {
       border: 1px solid var(--line);
       border-radius: 12px;
@@ -199,24 +306,41 @@
     <div class="row" id="steps"></div>
     <div class="dims" id="dims"></div>
     <div class="machinesetup" id="machinesetup" aria-live="polite"></div>
-    <p class="flow-hint">Click a card for interactive 3D (pan / zoom)</p>
-    <div class="flow-cards" id="flowCards" aria-label="Step materials, machine, and output">
-      <button type="button" class="flow-card materials" id="cardMaterials" data-role="materials">
-        <div class="fc-title">Materials</div>
-        <div class="fc-callout" id="cardMaterialsCallout"></div>
-        <img class="fc-preview" id="cardMaterialsImg" alt="Materials preview" />
-      </button>
-      <button type="button" class="flow-card machine" id="cardMachine" data-role="machine">
-        <div class="fc-title">Machine</div>
-        <div class="fc-callout" id="cardMachineCallout"></div>
-        <img class="fc-preview" id="cardMachineImg" alt="Machine preview" />
-      </button>
-      <button type="button" class="flow-card output" id="cardOutput" data-role="output">
-        <div class="fc-title">Output</div>
-        <div class="fc-callout" id="cardOutputCallout"></div>
-        <img class="fc-preview" id="cardOutputImg" alt="Output preview" />
-      </button>
+    <div class="graph-shell" id="graphShell" aria-label="Shop sequence graph">
+      <div class="graph-toolbar">
+        <strong>Shop sequence</strong>
+        <span>pan · scroll zoom · click node</span>
+        <button type="button" id="graphFit" title="Fit graph">Fit</button>
+        <button type="button" id="graphResetView" title="Reset pan/zoom">Reset</button>
+      </div>
+      <div class="graph-viewport" id="graphViewport">
+        <div class="graph-world" id="graphWorld">
+          <svg class="graph-edges" id="graphEdges" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div id="graphNodes"></div>
+        </div>
+      </div>
     </div>
+    <p class="flow-hint">Graph is the guide · click a node for interactive 3D</p>
+    <details class="step-cards-detail" id="stepCardsDetail">
+      <summary>Step detail cards (optional)</summary>
+      <div class="flow-cards" id="flowCards" aria-label="Step materials, machine, and output">
+        <button type="button" class="flow-card materials" id="cardMaterials" data-role="materials">
+          <div class="fc-title">Materials</div>
+          <div class="fc-callout" id="cardMaterialsCallout"></div>
+          <img class="fc-preview" id="cardMaterialsImg" alt="Materials preview" />
+        </button>
+        <button type="button" class="flow-card machine" id="cardMachine" data-role="machine">
+          <div class="fc-title">Machine</div>
+          <div class="fc-callout" id="cardMachineCallout"></div>
+          <img class="fc-preview" id="cardMachineImg" alt="Machine preview" />
+        </button>
+        <button type="button" class="flow-card output" id="cardOutput" data-role="output">
+          <div class="fc-title">Output</div>
+          <div class="fc-callout" id="cardOutputCallout"></div>
+          <img class="fc-preview" id="cardOutputImg" alt="Output preview" />
+        </button>
+      </div>
+    </details>
     <div id="cutSection">
       <h2 id="cutHeading">Hex cut counts</h2>
       <div class="cutbox" id="cutlist"></div>
@@ -226,7 +350,7 @@
       <div class="meta-body" id="hexMetaBody"></div>
     </details>
     <div class="hint">
-      Cards open interactive 3D · Esc closes<br>
+      Graph / cards open interactive 3D · Esc closes<br>
       <span class="legend"><span style="background:#c48a4a"></span>strut</span>
       <span class="legend"><span style="background:#5b3a1e"></span>6.5° bevel</span>
       <span class="legend"><span style="background:#7dcea0"></span>jig</span>
@@ -428,6 +552,119 @@ import * as THREE from 'three';
         }
       }
     ];
+
+    /**
+     * Directed multigraph shop sequence derived from STEPS.
+     * Shared material nodes + machine nodes (when machineVisual !== 'none').
+     * Machine output feeds shared materials; later machines fan-in from those.
+     */
+    const NODE_W = 132;
+    const NODE_H = 148;
+
+    function halfDimsLabel() {
+      return units === 'mm' ? `${STRUT_H}×${STOCK_W} mm` : `${STRUT_H_IN} × ${STOCK_W_IN}`;
+    }
+    function stockDimsLabel() {
+      return units === 'mm'
+        ? `${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm`
+        : `${STRUT_H_IN} × ${FULL_2X6_W_IN} × ${RAW_STOCK_LEN_IN}`;
+    }
+    function finishedDimsLabel() {
+      return units === 'mm' ? `${STRUT_H}×${STRUT_W} mm` : `${STRUT_H_IN} × ${STRUT_W_IN}`;
+    }
+
+    /** Static topology + layout; callouts refreshed via nodeCallout(). */
+    const GRAPH = {
+      nodes: [
+        // strut spine
+        { id: 'pdf-2x6', kind: 'material', title: 'PDF 2×6', materialKey: 'pdf-2x6', stepId: 0, x: 24, y: 36 },
+        { id: 'm-tableRip', kind: 'machine', title: 'Rip stock', machineVisual: 'tableRip', stepId: 0, x: 200, y: 36 },
+        { id: 'ripped-half', kind: 'material', title: 'Ripped half', materialKey: 'ripped-half', stepId: 0, x: 376, y: 36 },
+
+        // fan-out from ripped-half
+        { id: 'm-miterCrosscut', kind: 'machine', title: 'Cut blanks', machineVisual: 'miterCrosscut', stepId: 1, x: 560, y: 0 },
+        { id: 'optional-finish', kind: 'material', title: 'Optional finish', materialKey: 'optional-finish', stepId: 2, x: 560, y: 168 },
+        { id: 'm-tableBevel', kind: 'machine', title: 'Bevel rip', machineVisual: 'tableBevel', stepId: 4, x: 760, y: 168 },
+
+        { id: 'blank', kind: 'material', title: 'Blank', materialKey: 'blank', stepId: 1, x: 760, y: 0 },
+        { id: 'beveled', kind: 'material', title: 'Beveled', materialKey: 'beveled', stepId: 4, x: 940, y: 100 },
+
+        { id: 'm-miterSimple', kind: 'machine', title: 'Initial miters', machineVisual: 'miterSimple', stepId: 6, x: 1120, y: 100 },
+        { id: 'mitered', kind: 'material', title: 'Mitered', materialKey: 'mitered', stepId: 6, x: 1300, y: 100 },
+        { id: 'm-miterCompound', kind: 'machine', title: 'Compound ears', machineVisual: 'miterCompound', stepId: 7, x: 1480, y: 100 },
+        { id: 'ears', kind: 'material', title: 'Ears', materialKey: 'ears', stepId: 7, x: 1660, y: 100 },
+
+        // parallel jig lane
+        { id: 'jig', kind: 'material', title: 'Jig', materialKey: 'jig', stepId: 3, x: 560, y: 340 },
+        { id: 'm-handLayout', kind: 'machine', title: 'Lay out jig', machineVisual: 'handLayout', stepId: 3, x: 376, y: 340 },
+        { id: 'jig-stops', kind: 'material', title: 'Jig + stops', materialKey: 'jig-stops', stepId: 5, x: 760, y: 340 },
+
+        // assemble fan-in
+        { id: 'm-drill', kind: 'machine', title: 'Assemble', machineVisual: 'drill', stepId: 8, x: 1840, y: 220 },
+        { id: 'assembled', kind: 'material', title: 'Assembled', materialKey: 'assembled', stepId: 8, x: 2020, y: 220 },
+        { id: 'done', kind: 'material', title: 'Done', materialKey: 'done', stepId: 9, x: 2200, y: 220 }
+      ],
+      edges: [
+        { from: 'pdf-2x6', to: 'm-tableRip' },
+        { from: 'm-tableRip', to: 'ripped-half' },
+
+        // fan-out: ripped-half → Cut blanks AND Optional finish AND bevel path
+        { from: 'ripped-half', to: 'm-miterCrosscut', fan: true },
+        { from: 'ripped-half', to: 'optional-finish', fan: true },
+        { from: 'ripped-half', to: 'm-tableBevel', fan: true },
+
+        { from: 'm-miterCrosscut', to: 'blank' },
+        { from: 'blank', to: 'm-tableBevel' },
+        { from: 'optional-finish', to: 'm-tableBevel' },
+        { from: 'm-tableBevel', to: 'beveled' },
+
+        { from: 'beveled', to: 'm-miterSimple' },
+        { from: 'm-miterSimple', to: 'mitered' },
+        { from: 'mitered', to: 'm-miterCompound' },
+        { from: 'm-miterCompound', to: 'ears' },
+
+        // jig lane
+        { from: 'm-handLayout', to: 'jig' },
+        { from: 'jig', to: 'jig-stops' },
+
+        // fan-in: Assemble from ears + jig-stops
+        { from: 'ears', to: 'm-drill', fan: true },
+        { from: 'jig-stops', to: 'm-drill', fan: true },
+        { from: 'm-drill', to: 'assembled' },
+        { from: 'assembled', to: 'done' }
+      ]
+    };
+
+    function nodeById(id) {
+      return GRAPH.nodes.find((n) => n.id === id);
+    }
+
+    function nodeCallout(n) {
+      if (n.kind === 'machine') {
+        const mv = n.machineVisual;
+        if (mv === 'tableRip') return `${TOOL_TABLE_SAW} · rip`;
+        if (mv === 'tableBevel') return `${TOOL_TABLE_SAW} · ${BEVEL_DEG}°`;
+        if (mv === 'miterCrosscut') return `${TOOL_MITER_SAW} · crosscut`;
+        if (mv === 'miterSimple') return `${TOOL_MITER_SAW} · miters`;
+        if (mv === 'miterCompound') return `${TOOL_MITER_SAW} · compound`;
+        if (mv === 'handLayout') return 'hand layout · no saw';
+        if (mv === 'drill') return 'drill / driver';
+        return 'machine';
+      }
+      const k = n.materialKey;
+      if (k === 'pdf-2x6') return `(${RAW_STOCK_QTY})  ${stockDimsLabel()}`;
+      if (k === 'ripped-half') return `${RAW_STOCK_QTY} × 2  ·  ${halfDimsLabel()}`;
+      if (k === 'optional-finish') return `matched pair · ${halfDimsLabel()}`;
+      if (k === 'blank') return `${HEX.qty * 3} · ${blankWhlLabel()}`;
+      if (k === 'beveled') return `${finishedDimsLabel()} + ${BEVEL_DEG}°`;
+      if (k === 'jig') return `base ${fmt(HEX.c)} · arcs ${fmt(HEX.a)}`;
+      if (k === 'jig-stops') return 'jig + backing stops';
+      if (k === 'mitered') return `${HEX.base}° / ${HEX.apex}° miters`;
+      if (k === 'ears') return `compound ears + ${BEVEL_DEG}°`;
+      if (k === 'assembled') return 'assembled frame';
+      if (k === 'done') return `${HEX.qty} hex panels`;
+      return '';
+    }
 
     const _qs = new URLSearchParams(location.search);
     let step = Math.max(0, Math.min(STEPS.length - 1, parseInt(_qs.get('step') || '0', 10) || 0));
@@ -1125,12 +1362,332 @@ import * as THREE from 'three';
       return `${n} × 2  ·  ${halfLabel}`;
     }
 
+    /** Build shared material geometry into woodTarget for a GRAPH materialKey. */
+    function buildMaterialKey(key) {
+      const { pA, pB, pC, h, c } = hexPoints();
+      const up = new THREE.Vector3(0, 1, 0);
+      if (key === 'pdf-2x6') {
+        const shared = buildRipMaterials();
+        return shared.callout;
+      }
+      if (key === 'ripped-half') {
+        // Same stack metrics as rip materials, but only draw the two half stacks.
+        const n = RAW_STOCK_QTY;
+        const stackBudgetH = 0.94;
+        const gapRatio = 1.15;
+        const faceH = stackBudgetH / (n + gapRatio * (n - 1));
+        const gap = faceH * gapRatio;
+        const faceW = faceH * (FULL_2X6_W / STRUT_H);
+        const faceL = Math.min(faceW * (RAW_STOCK_LEN / FULL_2X6_W), 0.70);
+        const yaw = 0.35;
+        const stackMat = woodMat.clone();
+        stackMat.emissive = new THREE.Color(0x2a1808);
+        stackMat.emissiveIntensity = 0.22;
+        const stackBaseY = 0.01;
+        const stackTopY = stackBaseY + n * faceH + (n - 1) * gap;
+        return buildRipOutput({ faceH, gap, faceL, yaw, stackMat, stackBaseY, stackTopY });
+      }
+      if (key === 'optional-finish') {
+        [-0.15, 0.15].forEach((x, i) => {
+          const half = new THREE.Mesh(
+            new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 1.0),
+            stainMat
+          );
+          half.position.set(x, STRUT_H / 2000, 0);
+          woodTarget.add(half);
+          woodTarget.add(makeLabel(i === 0 ? `${fmt(STRUT_H)}×${fmt(STOCK_W)} stained` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
+        });
+        return `matched pair · ${fmt(STRUT_H)}×${fmt(STOCK_W)}`;
+      }
+      if (key === 'blank') {
+        addMaterialsPad(1.15, 1.0);
+        const blank = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.18, 0.32), woodMat);
+        blank.position.set(0.05, 0.11, 0);
+        woodTarget.add(blank);
+        addDarkOutline(blank);
+        const blankQty = HEX.qty * 3;
+        woodTarget.add(makeLabel(`ripped blank  w × h × l`, new THREE.Vector3(0.05, 0.42, 0)));
+        woodTarget.add(makeLabel(blankWhlLabel(), new THREE.Vector3(0.05, 0.32, 0)));
+        woodTarget.add(makeLabel(`1 of ${blankQty} shown  (${HEX.qty} panels × 3)`, new THREE.Vector3(0.05, -0.08, 0)));
+        return `${blankQty} · ${blankWhlLabel()}`;
+      }
+      if (key === 'beveled') {
+        addMaterialsPad(1.1, 0.9);
+        const finished = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 0.18), woodMat);
+        finished.position.set(-0.04, 0.13, 0);
+        woodTarget.add(finished);
+        const bevelEdge = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 0.18), bevelMat);
+        bevelEdge.position.set(0.07, 0.13, 0);
+        woodTarget.add(bevelEdge);
+        const finLbl = finishedDimsLabel();
+        woodTarget.add(makeLabel(`template ${finLbl}`, new THREE.Vector3(0.02, 0.38, 0)));
+        woodTarget.add(makeLabel(`${BEVEL_DEG}° bevel out`, new THREE.Vector3(0.02, -0.08, 0)));
+        return `${finLbl} + ${BEVEL_DEG}°`;
+      }
+      if (key === 'jig') {
+        addJig(pA, pB, pC, h, c, false);
+        woodTarget.add(makeLabel('arc ∩ = apex', pC.clone().add(new THREE.Vector3(0, 0.08, 0.05))));
+        return `base ${fmt(HEX.c)} · arcs ${fmt(HEX.a)}`;
+      }
+      if (key === 'jig-stops') {
+        addJig(pA, pB, pC, h, c, true);
+        woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
+        return 'jig + backing stops';
+      }
+      if (key === 'mitered') {
+        addJig(pA, pB, pC, h, c, false, false);
+        const s1 = placeStrut(pA, pB, up);
+        const s2 = placeStrut(pB, pC, up);
+        const s3 = placeStrut(pC, pA, up);
+        s1.position.z -= 0.22;
+        s2.position.x += 0.22;
+        s3.position.x -= 0.22;
+        woodTarget.add(s1, s2, s3);
+        woodTarget.add(makeLabel(`apex ${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        woodTarget.add(makeLabel(`base ${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.08, 0.08, 0))));
+        woodTarget.add(makeLabel(`base ${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.08, 0.08, 0))));
+        return `${HEX.base}° / ${HEX.apex}° miters`;
+      }
+      if (key === 'ears') {
+        addJig(pA, pB, pC, h, c, false, false);
+        woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
+        woodTarget.add(makeLabel(`apex miter ${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        woodTarget.add(makeLabel(`base miter ${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.1, 0.08, 0))));
+        woodTarget.add(makeLabel(`base miter ${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.1, 0.08, 0))));
+        woodTarget.add(makeLabel(`+ ${BEVEL_DEG}° bevel`, new THREE.Vector3(0, 0.14, h / 2)));
+        [pA, pB, pC].forEach((p) => {
+          const ear = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.05, 4), bevelMat);
+          ear.position.copy(p);
+          ear.position.y = 0.03;
+          woodTarget.add(ear);
+        });
+        return `compound ears + ${BEVEL_DEG}°`;
+      }
+      if (key === 'assembled' || key === 'done') {
+        addJig(pA, pB, pC, h, c, true);
+        woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
+        if (key === 'done') {
+          woodTarget.add(makeLabel(`${HEX.qty} incl. 4 windows`, new THREE.Vector3(0, 0.2, h / 2)));
+          return `${HEX.qty} hex panels`;
+        }
+        return 'assembled frame';
+      }
+      return '';
+    }
+
+    // --- Graph node roots / previews ---
+    const graphHold = new THREE.Group();
+    scene.add(graphHold);
+    graphHold.visible = false;
+    /** @type {Map<string, { root: THREE.Group, title: string, callout: string, preview: string }>} */
+    const graphNodeState = new Map();
+    let graphModalNodeId = null;
+
+    function clearGraphNodeState() {
+      for (const st of graphNodeState.values()) {
+        clearCss2dIn(st.root);
+        if (st.root.parent) st.root.parent.remove(st.root);
+      }
+      graphNodeState.clear();
+      clearCss2dIn(graphHold);
+      graphHold.clear();
+    }
+
+    function buildGraphNodeRoot(n) {
+      const root = new THREE.Group();
+      root.name = `graph:${n.id}`;
+      if (n.kind === 'machine') {
+        const prev = machineTarget;
+        machineTarget = root;
+        addMachineVisual(n.machineVisual);
+        machineTarget = prev;
+      } else {
+        const prev = woodTarget;
+        woodTarget = root;
+        buildMaterialKey(n.materialKey);
+        woodTarget = prev;
+      }
+      const callout = nodeCallout(n);
+      const preview = captureRolePreview(root);
+      // captureRolePreview parks in roleHold — reclaim for graph
+      graphHold.add(root);
+      graphNodeState.set(n.id, { root, title: n.title, callout, preview });
+      return graphNodeState.get(n.id);
+    }
+
+    function rebuildGraphPreviews() {
+      if (graphModalNodeId) closeRoleModal(true);
+      clearGraphNodeState();
+      for (const n of GRAPH.nodes) buildGraphNodeRoot(n);
+      renderGraphDom();
+    }
+
+    // --- Graph DOM: pan / zoom / edges ---
+    const graphViewport = document.getElementById('graphViewport');
+    const graphWorld = document.getElementById('graphWorld');
+    const graphEdgesSvg = document.getElementById('graphEdges');
+    const graphNodesEl = document.getElementById('graphNodes');
+    let graphPan = { x: 12, y: 16, scale: 0.72 };
+    let graphDrag = null;
+
+    function applyGraphTransform() {
+      graphWorld.style.transform =
+        `translate(${graphPan.x}px, ${graphPan.y}px) scale(${graphPan.scale})`;
+    }
+
+    function graphContentSize() {
+      let maxX = 0, maxY = 0;
+      for (const n of GRAPH.nodes) {
+        maxX = Math.max(maxX, n.x + NODE_W);
+        maxY = Math.max(maxY, n.y + NODE_H);
+      }
+      return { w: maxX + 40, h: maxY + 40 };
+    }
+
+    function fitGraphView() {
+      const { w, h } = graphContentSize();
+      const vw = graphViewport.clientWidth || 600;
+      const vh = graphViewport.clientHeight || 400;
+      const pad = 20;
+      const s = Math.min((vw - pad * 2) / w, (vh - pad * 2) / h, 1);
+      graphPan.scale = Math.max(0.35, s);
+      graphPan.x = (vw - w * graphPan.scale) / 2;
+      graphPan.y = (vh - h * graphPan.scale) / 2;
+      applyGraphTransform();
+    }
+
+    function edgePath(a, b) {
+      const x1 = a.x + NODE_W;
+      const y1 = a.y + NODE_H * 0.42;
+      const x2 = b.x;
+      const y2 = b.y + NODE_H * 0.42;
+      const dx = Math.max(40, (x2 - x1) * 0.45);
+      return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+    }
+
+    function renderGraphDom() {
+      const { w, h } = graphContentSize();
+      graphEdgesSvg.setAttribute('width', String(w));
+      graphEdgesSvg.setAttribute('height', String(h));
+      graphEdgesSvg.style.width = w + 'px';
+      graphEdgesSvg.style.height = h + 'px';
+      graphWorld.style.width = w + 'px';
+      graphWorld.style.height = h + 'px';
+
+      // markers
+      const fanIds = new Set();
+      const outCount = new Map();
+      const inCount = new Map();
+      for (const e of GRAPH.edges) {
+        outCount.set(e.from, (outCount.get(e.from) || 0) + 1);
+        inCount.set(e.to, (inCount.get(e.to) || 0) + 1);
+      }
+      for (const e of GRAPH.edges) {
+        if (e.fan || (outCount.get(e.from) || 0) > 1 || (inCount.get(e.to) || 0) > 1) fanIds.add(`${e.from}->${e.to}`);
+      }
+
+      graphEdgesSvg.innerHTML =
+        `<defs>
+          <marker id="gArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="currentColor" style="color:var(--muted)" />
+          </marker>
+          <marker id="gArrowFan" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="currentColor" style="color:var(--accent)" />
+          </marker>
+        </defs>` +
+        GRAPH.edges.map((e) => {
+          const a = nodeById(e.from);
+          const b = nodeById(e.to);
+          if (!a || !b) return '';
+          const isFan = fanIds.has(`${e.from}->${e.to}`);
+          return `<path class="${isFan ? 'fan' : ''}" d="${edgePath(a, b)}" marker-end="url(#${isFan ? 'gArrowFan' : 'gArrow'})" />`;
+        }).join('');
+
+      graphNodesEl.innerHTML = '';
+      for (const n of GRAPH.nodes) {
+        const st = graphNodeState.get(n.id);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `graph-node ${n.kind}` + (n.stepId === step ? ' active' : '');
+        btn.style.left = n.x + 'px';
+        btn.style.top = n.y + 'px';
+        btn.dataset.nodeId = n.id;
+        btn.title = 'Open interactive 3D';
+        const callout = (st && st.callout) || nodeCallout(n);
+        btn.innerHTML =
+          `<div class="gn-kind">${n.kind}</div>` +
+          `<div class="gn-title"></div>` +
+          `<div class="gn-callout"></div>` +
+          `<img class="gn-thumb" alt="" />`;
+        btn.querySelector('.gn-title').textContent = n.title;
+        btn.querySelector('.gn-callout').textContent = callout;
+        const img = btn.querySelector('.gn-thumb');
+        if (st && st.preview) img.src = st.preview;
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          openGraphNodeModal(n.id);
+        });
+        graphNodesEl.appendChild(btn);
+      }
+      applyGraphTransform();
+    }
+
+    function highlightGraphForStep() {
+      graphNodesEl.querySelectorAll('.graph-node').forEach((el) => {
+        const n = nodeById(el.dataset.nodeId);
+        el.classList.toggle('active', !!(n && n.stepId === step));
+      });
+    }
+
+    // Pointer pan
+    graphViewport.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.graph-node')) return;
+      graphDrag = { pid: e.pointerId, x: e.clientX, y: e.clientY, ox: graphPan.x, oy: graphPan.y };
+      graphViewport.classList.add('panning');
+      graphViewport.setPointerCapture(e.pointerId);
+    });
+    graphViewport.addEventListener('pointermove', (e) => {
+      if (!graphDrag || e.pointerId !== graphDrag.pid) return;
+      graphPan.x = graphDrag.ox + (e.clientX - graphDrag.x);
+      graphPan.y = graphDrag.oy + (e.clientY - graphDrag.y);
+      applyGraphTransform();
+    });
+    function endGraphDrag(e) {
+      if (!graphDrag || (e && e.pointerId !== graphDrag.pid)) return;
+      graphDrag = null;
+      graphViewport.classList.remove('panning');
+    }
+    graphViewport.addEventListener('pointerup', endGraphDrag);
+    graphViewport.addEventListener('pointercancel', endGraphDrag);
+    graphViewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = graphViewport.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const before = graphPan.scale;
+      const next = Math.min(1.8, Math.max(0.3, before * (e.deltaY > 0 ? 0.9 : 1.1)));
+      // zoom toward cursor
+      const wx = (mx - graphPan.x) / before;
+      const wy = (my - graphPan.y) / before;
+      graphPan.scale = next;
+      graphPan.x = mx - wx * next;
+      graphPan.y = my - wy * next;
+      applyGraphTransform();
+    }, { passive: false });
+
+    document.getElementById('graphFit').onclick = () => fitGraphView();
+    document.getElementById('graphResetView').onclick = () => {
+      graphPan = { x: 12, y: 16, scale: 0.72 };
+      applyGraphTransform();
+    };
+
     function rebuild() {
       // CSS2D orphan clear before group.clear()
       group.traverse((obj) => {
         if (obj.isCSS2DObject && obj.element) obj.element.remove();
       });
       clearCss2dIn(roleHold);
+      clearCss2dIn(graphHold);
       clearCss2dIn(materialsRoot);
       clearCss2dIn(outputRoot);
       clearCss2dIn(machineRoot);
@@ -1356,6 +1913,10 @@ import * as THREE from 'three';
       // Frame quiet overview
       camera.position.set(1.35, 1.15, 1.85);
       controls.target.set(0, 0.25, 0);
+
+      // Primary chrome: whole-guide directed multigraph
+      rebuildGraphPreviews();
+      highlightGraphForStep();
     }
 
     // --- Modal interactive view ---
@@ -1395,14 +1956,8 @@ import * as THREE from 'three';
       modalCam.updateProjectionMatrix();
     }
 
-    function openRoleModal(role) {
-      const root = role === 'materials' ? materialsRoot
-        : role === 'machine' ? machineRoot : outputRoot;
-      if (!root || !roleState[role].visible) return;
-      modalRole = role;
-      document.getElementById('roleModalTitle').textContent =
-        roleState[role].title + (roleState[role].callout ? ' — ' + roleState[role].callout : '');
-
+    function presentModalRoot(root, title) {
+      if (!root) return;
       // Clear prior CSS2D in modal host
       clearCss2dIn(modalHost);
       while (modalLabelRenderer.domElement.firstChild) {
@@ -1410,7 +1965,7 @@ import * as THREE from 'three';
       }
       modalHost.clear();
 
-      // Reparent live role group into modal
+      document.getElementById('roleModalTitle').textContent = title || 'Preview';
       modalHost.add(root);
       root.visible = true;
 
@@ -1426,6 +1981,41 @@ import * as THREE from 'three';
       resizeModal();
     }
 
+    function openRoleModal(role) {
+      const root = role === 'materials' ? materialsRoot
+        : role === 'machine' ? machineRoot : outputRoot;
+      if (!root || !roleState[role].visible) return;
+      graphModalNodeId = null;
+      modalRole = role;
+      const title = roleState[role].title + (roleState[role].callout ? ' — ' + roleState[role].callout : '');
+      presentModalRoot(root, title);
+    }
+
+    function openGraphNodeModal(nodeId) {
+      const st = graphNodeState.get(nodeId);
+      const n = nodeById(nodeId);
+      if (!st || !st.root || !n) return;
+      modalRole = null;
+      graphModalNodeId = nodeId;
+      window.__graphStepDirty = false;
+      // Jump step chrome to related step (dims / setup) without fighting graph
+      if (typeof n.stepId === 'number' && n.stepId !== step) {
+        step = n.stepId;
+        window.__graphStepDirty = true;
+        document.getElementById('uIN').classList.toggle('active', units === 'in');
+        document.getElementById('uMM').classList.toggle('active', units === 'mm');
+        renderSteps();
+        setDims();
+        setMachineSetup();
+        setCutList();
+        // Defer full rebuild until modal closes — keep this node's root alive
+        highlightGraphForStep();
+      }
+      const title = `${n.kind === 'machine' ? 'Machine' : 'Material'}: ${n.title}` +
+        (st.callout ? ' — ' + st.callout : '');
+      presentModalRoot(st.root, title);
+    }
+
     function closeRoleModal(silent) {
       if (!modalOpen && !modalEl.open) return;
       // Clear CSS2D before moving group back
@@ -1437,10 +2027,22 @@ import * as THREE from 'three';
       if (materialsRoot.parent === modalHost) roleHold.add(materialsRoot);
       if (machineRoot.parent === modalHost) roleHold.add(machineRoot);
       if (outputRoot.parent === modalHost) roleHold.add(outputRoot);
+      // Return graph node root
+      if (graphModalNodeId) {
+        const st = graphNodeState.get(graphModalNodeId);
+        if (st && st.root.parent === modalHost) graphHold.add(st.root);
+      }
       modalHost.clear();
+      const wasGraph = graphModalNodeId;
       modalRole = null;
+      graphModalNodeId = null;
       modalOpen = false;
       if (modalEl.open) modalEl.close();
+      // If we changed step while modal open, sync fully now
+      if (wasGraph && !silent && window.__graphStepDirty) {
+        window.__graphStepDirty = false;
+        rebuild();
+      }
     }
 
     document.getElementById('cardMaterials').onclick = () => openRoleModal('materials');
@@ -1616,6 +2218,9 @@ import * as THREE from 'three';
       controls.target.set(0, 0.25, 0);
     };
     applyThemeScenes();
+    // Fit graph after first layout
+    requestAnimationFrame(() => { try { fitGraphView(); } catch (e) {} });
+
     function resize() {
       const w = innerWidth, h = innerHeight;
       renderer.setSize(w, h, false);
