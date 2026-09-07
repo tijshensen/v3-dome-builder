@@ -190,8 +190,10 @@
       BEVEL_RAD,
       BLANK_LEN,
       FULL_2X6_W,
+      FULL_2X6_W_IN,
       RAW_STOCK_QTY,
       RAW_STOCK_LEN,
+      RAW_STOCK_LEN_IN,
       PLAN_IN,
       TOOL_TABLE_SAW,
       TOOL_MITER_SAW
@@ -891,7 +893,7 @@
             : `${STRUT_H_IN} × ${STOCK_W_IN}`;
           const stockCallout = units === 'mm'
             ? `(${RAW_STOCK_QTY}) ${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm`
-            : `(${RAW_STOCK_QTY}) ${STRUT_H_IN} × 5½″ × 4 m`;
+            : `(${RAW_STOCK_QTY}) ${STRUT_H_IN} × ${FULL_2X6_W_IN} × ${RAW_STOCK_LEN_IN}`;
 
           const full = new THREE.Mesh(
             new THREE.BoxGeometry(0.52, 0.22, 0.18),
