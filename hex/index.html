@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -431,8 +431,8 @@
         <button id="btnDoor" class="secondary" type="button" disabled title="Door polish paused until Hex passes review">Door half</button>
       </div>
       <div class="row">
-        <button id="uIN" class="active" type="button">in</button>
-        <button id="uMM" type="button">mm</button>
+        <button id="uIN" type="button">in</button>
+        <button id="uMM" class="active" type="button">mm</button>
         <button id="btnTheme" type="button" title="Toggle dark / light">Dark</button>
       </div>
       <div class="row" id="steps"></div>
@@ -867,16 +867,25 @@ import * as THREE from 'three';
 
     const _qs = new URLSearchParams(location.search);
     let step = Math.max(0, Math.min(STEPS.length - 1, parseInt(_qs.get('step') || '0', 10) || 0));
-    let units = 'in'; // imperial primary for Hex review
+    const UNITS_KEY = 'hex-units';
     const THEME_KEY = 'hex-theme';
     const SIDEBAR_KEY = 'hex-sidebar-collapsed';
-    /** Default dark — matches prior look; light is opt-in via toggle + localStorage. */
+    /** First visit: mm. Returning visitors keep hex-units override. */
+    function readStoredUnits() {
+      try {
+        const v = localStorage.getItem(UNITS_KEY);
+        if (v === 'mm' || v === 'in') return v;
+      } catch (e) {}
+      return 'mm';
+    }
+    let units = readStoredUnits();
+    /** First visit: light. Returning visitors keep hex-theme override. */
     function readStoredTheme() {
       try {
         const v = localStorage.getItem(THEME_KEY);
         if (v === 'light' || v === 'dark') return v;
       } catch (e) {}
-      return 'dark';
+      return 'light';
     }
     let theme = readStoredTheme();
     function themeSceneHex() {
@@ -2673,8 +2682,13 @@ import * as THREE from 'three';
       sync();
     }
 
-    document.getElementById('uIN').onclick = () => { units = 'in'; sync(); };
-    document.getElementById('uMM').onclick = () => { units = 'mm'; sync(); };
+    function setUnits(next) {
+      units = next === 'in' ? 'in' : 'mm';
+      try { localStorage.setItem(UNITS_KEY, units); } catch (e) {}
+      sync();
+    }
+    document.getElementById('uIN').onclick = () => { setUnits('in'); };
+    document.getElementById('uMM').onclick = () => { setUnits('mm'); };
     document.getElementById('btnTheme').onclick = () => {
       setTheme(theme === 'light' ? 'dark' : 'light');
     };

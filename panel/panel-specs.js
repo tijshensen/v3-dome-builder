@@ -47,7 +47,7 @@ export const RAW_STOCK_LEN = 4000;   // 4 m full-length boards before blanking
 export const RAW_STOCK_LEN_IN = "13'-1½\"";
 /** Blade kerf (mm) for blank leftover + sawdust volume math. */
 export const BLADE_KERF_MM = 2.5;
-export const BLADE_KERF_IN = '⅛"'; // ~2.5 mm (sixteenths round)
+export const BLADE_KERF_IN = '3/32"'; // ~2.5 mm
 
 /**
  * Reasoned leftover after n=3 blanks from one RAW_STOCK_LEN ripped half.
