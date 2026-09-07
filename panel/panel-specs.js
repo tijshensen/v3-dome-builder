@@ -41,6 +41,10 @@ export const BLANK_LEN = 1219;   // ~4' handling blanks
 export const BLANK_LEN_IN = "4'-0\"";
 export const FULL_2X6_W = 140;   // full 2×6 section before rip (~5½")
 export const FULL_2X6_W_IN = '5½"';
+/** Trillium PDF material list — raw dome-frame strut stock (kiln-dried 2×6) */
+export const RAW_STOCK_QTY = 32;     // (32) pieces on PDF list
+export const RAW_STOCK_LEN = 4000;   // 4 m full-length boards before blanking
+export const RAW_STOCK_LEN_IN = "13'-1½\"";
 
 /** Locked shop tools (Hex guide machine-setup panel) */
 export const TOOL_TABLE_SAW = 'DEWALT DWE7492 table saw';
@@ -163,7 +167,8 @@ export const PLAN_IN = new Map([
   [STOCK_W, STOCK_W_IN],
   [STRUT_W, STRUT_W_IN],
   [BLANK_LEN, BLANK_LEN_IN],
-  [FULL_2X6_W, FULL_2X6_W_IN]
+  [FULL_2X6_W, FULL_2X6_W_IN],
+  [RAW_STOCK_LEN, RAW_STOCK_LEN_IN]
 ]);
 
 export const META = Object.freeze({
@@ -196,6 +201,9 @@ export default {
   BLANK_LEN_IN,
   FULL_2X6_W,
   FULL_2X6_W_IN,
+  RAW_STOCK_QTY,
+  RAW_STOCK_LEN,
+  RAW_STOCK_LEN_IN,
   TOOL_TABLE_SAW,
   TOOL_MITER_SAW,
   PLAN_IN,

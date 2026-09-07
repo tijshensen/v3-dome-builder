@@ -190,6 +190,8 @@
       BEVEL_RAD,
       BLANK_LEN,
       FULL_2X6_W,
+      RAW_STOCK_QTY,
+      RAW_STOCK_LEN,
       PLAN_IN,
       TOOL_TABLE_SAW,
       TOOL_MITER_SAW
@@ -201,31 +203,32 @@
     const STEPS = [
       {
         id: 0,
-        title: '1. Cut blanks',
-        text: () => `Cut strut blanks ~${fmt(BLANK_LEN)} (longest side ${fmt(HEX.a)}). Batch: ${HEX.qty} panels × 3 = ${HEX.qty * 3} blanks.`,
-        view: 'blanks',
-        machineVisual: 'miterCrosscut',
-        machineSetup: {
-          machines: () => `${TOOL_MITER_SAW} (prefer) · or hand saw`,
-          settings: () => [
-            `Prefer ${TOOL_MITER_SAW} for crosscutting blanks to ~${fmt(BLANK_LEN)}`,
-            'Use a stop block for repeat blank length on the miter saw',
-            'No bevel / no compound for this step'
-          ]
-        }
-      },
-      {
-        id: 1,
-        title: '2. Rip stock',
-        text: () => `Rip 2×6 in half → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}. Keep matched pairs. Rip capacity fine for ~${fmt(BLANK_LEN)} blanks.`,
+        title: '1. Rip stock',
+        text: () => `First strut step: rip Trillium PDF stock (${RAW_STOCK_QTY}) ${fmt(STRUT_H)}×${fmt(FULL_2X6_W)}×${fmt(RAW_STOCK_LEN)} kiln-dried 2×6s in half on ${TOOL_TABLE_SAW} → ~${fmt(STRUT_H)} × ${fmt(STOCK_W)} (straighter than buying 2×3). Keep matched pairs.`,
         view: 'stock',
         machineVisual: 'tableRip',
         machineSetup: {
           machines: () => TOOL_TABLE_SAW,
           settings: () => [
+            `PDF stock: (${RAW_STOCK_QTY}) ${fmt(STRUT_H)}×${fmt(FULL_2X6_W)}×${fmt(RAW_STOCK_LEN)} kiln-dried — rip these first`,
             'Blade square: 90° / 0° bevel (no tilt)',
             `Fence: half of 2×6 → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}`,
             'Use a push stick; keep matched pairs'
+          ]
+        }
+      },
+      {
+        id: 1,
+        title: '2. Cut blanks',
+        text: () => `Crosscut strut blanks ~${fmt(BLANK_LEN)} from ripped halves (longest side ${fmt(HEX.a)}). Batch: ${HEX.qty} panels × 3 = ${HEX.qty * 3} blanks.`,
+        view: 'blanks',
+        machineVisual: 'miterCrosscut',
+        machineSetup: {
+          machines: () => `${TOOL_MITER_SAW} (prefer) · or hand saw`,
+          settings: () => [
+            `Prefer ${TOOL_MITER_SAW} for crosscutting ripped stock to ~${fmt(BLANK_LEN)}`,
+            'Use a stop block for repeat blank length on the miter saw',
+            'No bevel / no compound for this step'
           ]
         }
       },
@@ -442,8 +445,8 @@
 
     /** Active-unit blank cross-section × length (w × h × l) from panel-specs */
     function blankWhlLabel() {
-      // w = full 2×6 face width, h = thickness, l = blank length
-      const w = fmt(FULL_2X6_W);
+      // After rip-first: w = ripped half face, h = thickness, l = blank length
+      const w = fmt(STOCK_W);
       const h = fmt(STRUT_H);
       const l = fmt(BLANK_LEN);
       return `${w} × ${h} × ~${l}`;
@@ -802,7 +805,7 @@
           fenceFaceMm: STOCK_W,
           stockWmm: FULL_2X6_W,
           stockHmm: STRUT_H,
-          label: `2×6 → ${fmt(STRUT_H)}×${fmt(STOCK_W)}`
+          label: `PDF 2×6 → ${fmt(STRUT_H)}×${fmt(STOCK_W)}`
         });
       } else if (kind === 'tableBevel') {
         addTableSawSchematic({
@@ -861,7 +864,7 @@
       if (!showMachine) setMachineHud(null);
 
       if (showWood && view === 'blanks') {
-        // Face-on 2×6 blank — large enough to fill MATERIALS like miters
+        // Face-on ripped blank — large enough to fill MATERIALS like miters
         if (split) addMaterialsPad(1.15, 1.0);
         const blank = new THREE.Mesh(
           new THREE.BoxGeometry(0.95, 0.18, 0.32),
@@ -871,7 +874,7 @@
         woodTarget.add(blank);
         addDarkOutline(blank);
         const blankQty = HEX.qty * 3; // 73 panels × 3 = 219 strut blanks
-        woodTarget.add(makeLabel(`2×6 blank  w × h × l`, new THREE.Vector3(0.05, 0.42, 0)));
+        woodTarget.add(makeLabel(`ripped blank  w × h × l`, new THREE.Vector3(0.05, 0.42, 0)));
         woodTarget.add(makeLabel(blankWhlLabel(), new THREE.Vector3(0.05, 0.32, 0)));
         woodTarget.add(makeLabel(
           `1 of ${blankQty} shown  (${HEX.qty} panels × 3)`,
@@ -880,12 +883,15 @@
       }
 
       if (showWood && view === 'stock') {
-        if (step === 1) {
-          // MATERIALS: large cross-section 2×6 → two halves (fills left pane like miters)
+        if (STEPS[step].machineVisual === 'tableRip') {
+          // MATERIALS: large cross-section PDF 2×6 → two halves (fills left pane like miters)
           if (split) addMaterialsPad(1.25, 1.05);
           const halfLabel = units === 'mm'
             ? `${STRUT_H}×${STOCK_W} mm`
             : `${STRUT_H_IN} × ${STOCK_W_IN}`;
+          const stockCallout = units === 'mm'
+            ? `(${RAW_STOCK_QTY}) ${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm`
+            : `(${RAW_STOCK_QTY}) ${STRUT_H_IN} × 5½″ × 4 m`;
 
           const full = new THREE.Mesh(
             new THREE.BoxGeometry(0.52, 0.22, 0.18),
@@ -893,7 +899,8 @@
           );
           full.position.set(-0.28, 0.13, 0);
           woodTarget.add(full);
-          woodTarget.add(makeLabel('2×6 stock blank', new THREE.Vector3(-0.28, 0.38, 0)));
+          woodTarget.add(makeLabel('PDF 2×6 kiln-dried', new THREE.Vector3(-0.28, 0.38, 0)));
+          woodTarget.add(makeLabel(stockCallout, new THREE.Vector3(-0.28, -0.08, 0)));
 
           const arr = arrowMesh(new THREE.Vector3(1, 0, 0), 0xc48a4a);
           arr.position.set(0.06, 0.16, 0);
@@ -911,7 +918,7 @@
           woodTarget.add(makeLabel(halfLabel, new THREE.Vector3(0.45, 0.38, 0)));
           woodTarget.add(makeLabel('matched pair', new THREE.Vector3(0.45, -0.08, 0)));
         }
-        if (step === 2) {
+        if (STEPS[step].machineVisual === 'none') {
           // Optional finish — no saw; stained matched pairs
           [-0.15, 0.15].forEach((x, i) => {
             const half = new THREE.Mesh(
@@ -1045,7 +1052,7 @@
         `Hex ×${HEX.qty} including 4 windows`,
         `Sides: ${fmt(HEX.a)} / ${fmt(HEX.b)} / base ${fmt(HEX.c)}`,
         `Miters off 90°: apex ${HEX.apex}° · bases ${HEX.base}° / ${HEX.base}°`,
-        `Stock: 2×6 → ${fmt(STRUT_H)} × ${fmt(STOCK_W)} · bevel ${BEVEL_DEG}° → finished ${fmt(STRUT_H)} × ${fmt(STRUT_W)}`
+        `Stock: PDF (${RAW_STOCK_QTY}) 2×6 ×${fmt(RAW_STOCK_LEN)} → rip ${fmt(STRUT_H)} × ${fmt(STOCK_W)} · bevel ${BEVEL_DEG}° → finished ${fmt(STRUT_H)} × ${fmt(STRUT_W)}`
       ].join('\n');
     }
 
@@ -1104,15 +1111,18 @@
       let heading = 'This step';
 
       if (s.id === 0) {
+        heading = 'Cut — rip stock';
+        lines = [
+          `PDF stock: (${RAW_STOCK_QTY}) ${fmt(STRUT_H)}×${fmt(FULL_2X6_W)}×${fmt(RAW_STOCK_LEN)} kiln-dried`,
+          `Cross-section: 2×6 → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}`
+        ];
+      } else if (s.id === 1) {
         heading = 'Cut — blanks';
         lines = [
           `Strut blanks: ${HEX.qty * 3} (1 shown in 3D)`,
           `Blank w × h × l: ${blankWhlLabel()}`,
-          `Longest side ${fmt(HEX.a)} · ${HEX.qty} panels × 3`
+          `From ripped halves · longest side ${fmt(HEX.a)} · ${HEX.qty} panels × 3`
         ];
-      } else if (s.id === 1) {
-        heading = 'Cut — rip stock';
-        lines = [`Cross-section: 2×6 → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}`];
       } else if (s.id === 3) {
         heading = 'Layout — jig';
         lines = [`Base ${fmt(HEX.c)} · arcs ${fmt(HEX.a)} / ${fmt(HEX.b)}`];
