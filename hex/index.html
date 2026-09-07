@@ -151,15 +151,9 @@
     button.secondary { opacity: 0.45; }
     button:disabled { opacity: 0.35; cursor: not-allowed; }
     .step { width: 100%; text-align: left; font-size: 12px; padding: 5px 8px; }
-    .dims { color: var(--muted); font-size: 12px; white-space: pre-wrap; margin: 6px 0 0; }
     .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
     .hint a { color: var(--accent); }
     .legend span { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
-    .cutbox {
-      background: var(--inset); border: 1px solid var(--line); border-radius: 8px;
-      padding: 8px 10px; font-size: 12px; color: var(--muted); white-space: pre-wrap;
-      margin-top: 4px;
-    }
     .badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: var(--btn); color: var(--muted); margin-left: 4px; }
     .machinesetup {
       background: var(--inset); border: 1px solid var(--hex); border-radius: 8px;
@@ -183,187 +177,7 @@
       font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
     }
     .hex-meta .meta-body { white-space: pre-wrap; margin-top: 6px; }
-    #cutSection[hidden] { display: none !important; }
-    #cutSection h2 { margin-top: 8px; }
     .split-chrome { display: none !important; }
-
-    /* 3-card flow */
-    .flow-cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin: 10px 0 4px;
-    }
-    .flow-cards.two-col { grid-template-columns: repeat(2, 1fr); }
-    .flow-cards.one-col { grid-template-columns: 1fr; }
-    @media (max-width: 520px) {
-      .flow-cards, .flow-cards.two-col, .flow-cards.one-col { grid-template-columns: 1fr; }
-    }
-    /* Compact sidebar: stack optional step cards */
-    .ui .flow-cards, .ui .flow-cards.two-col, .ui .flow-cards.one-col {
-      grid-template-columns: 1fr;
-    }
-    .flow-card {
-      background: var(--inset);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 8px;
-      cursor: pointer;
-      text-align: left;
-      color: inherit;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      min-width: 0;
-    }
-    .flow-card:hover { border-color: var(--btn-hover-border); }
-    .flow-card:focus-visible { outline: 2px solid var(--hex); outline-offset: 2px; }
-    .flow-card[hidden] { display: none !important; }
-    .flow-card .fc-title {
-      font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
-      text-transform: uppercase; color: var(--muted); margin: 0;
-    }
-    .flow-card.materials .fc-title { color: var(--wood); }
-    .flow-card.machine .fc-title { color: var(--machine-card); }
-    .flow-card.output .fc-title { color: var(--accent); }
-    .flow-card .fc-callout {
-      font-size: 11px; color: var(--text); line-height: 1.3;
-      min-height: 2.6em;
-    }
-    .flow-card .fc-preview {
-      width: 100%; aspect-ratio: 4 / 3; border-radius: 6px;
-      background: var(--preview-bg); border: 1px solid var(--preview-border);
-      object-fit: cover; display: block;
-    }
-    .flow-hint { font-size: 11px; color: var(--muted); margin: 0 0 4px; }
-
-    /* Directed multigraph shop sequence — primary main viewport */
-    .graph-shell {
-      flex: 1 1 auto;
-      margin: 0;
-      border: none;
-      border-radius: 0;
-      background: var(--inset);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      height: 100%;
-    }
-    .graph-toolbar {
-      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-      padding: 8px 12px; border-bottom: 1px solid var(--line);
-      font-size: 11px; color: var(--muted);
-      background: var(--panel);
-      flex: 0 0 auto;
-    }
-    .graph-toolbar strong { color: var(--text); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
-    .graph-toolbar button { padding: 4px 10px; font-size: 11px; }
-    .graph-toolbar .graph-spacer { flex: 1 1 auto; }
-    .graph-viewport {
-      position: relative;
-      flex: 1 1 auto;
-      height: auto;
-      min-height: 0;
-      overflow: hidden;
-      cursor: grab;
-      touch-action: none;
-      background:
-        radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--line) 70%, transparent) 1px, transparent 0) 0 0 / 18px 18px;
-    }
-    .graph-viewport.panning { cursor: grabbing; }
-    .graph-world {
-      position: absolute; left: 0; top: 0;
-      transform-origin: 0 0;
-      will-change: transform;
-    }
-    .graph-edges {
-      position: absolute; left: 0; top: 0;
-      overflow: visible;
-      pointer-events: none;
-    }
-    .graph-edges path {
-      fill: none;
-      stroke: var(--muted);
-      stroke-width: 1.6;
-      opacity: 0.85;
-    }
-    .graph-edges path.fan {
-      stroke: var(--accent);
-      stroke-width: 2;
-      opacity: 1;
-    }
-    .graph-edges marker path { fill: var(--muted); }
-    .graph-node {
-      position: absolute;
-      width: 132px;
-      padding: 6px;
-      border-radius: 10px;
-      border: 1px solid var(--line);
-      background: var(--panel);
-      color: inherit;
-      text-align: left;
-      cursor: pointer;
-      box-shadow: 0 2px 10px #00000033;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .graph-node:hover { border-color: var(--btn-hover-border); }
-    .graph-node:focus-visible { outline: 2px solid var(--hex); outline-offset: 2px; }
-    .graph-node.material { border-color: color-mix(in srgb, var(--wood) 55%, var(--line)); }
-    .graph-node.machine { border-color: color-mix(in srgb, var(--machine-card) 60%, var(--line)); }
-    .graph-node.active {
-      border-color: var(--hex);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--hex) 45%, transparent);
-    }
-    .graph-node .gn-kind {
-      font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
-      text-transform: uppercase; color: var(--muted); margin: 0;
-    }
-    .graph-node.material .gn-kind { color: var(--wood); }
-    .graph-node.machine .gn-kind { color: var(--machine-card); }
-    .graph-node .gn-title {
-      font-size: 12px; font-weight: 650; margin: 0; color: var(--text);
-      line-height: 1.2;
-    }
-    .graph-node .gn-callout {
-      font-size: 10px; color: var(--muted); line-height: 1.25;
-      min-height: 2.4em;
-    }
-    /* Material nodes: Qty + Dims (+ optional muted angle/process) */
-    .graph-node .gn-qty,
-    .graph-node .gn-dims {
-      font-size: 10px; color: var(--muted); line-height: 1.25;
-      margin: 0;
-    }
-    .graph-node .gn-qty { color: var(--text); font-weight: 600; }
-    .graph-node .gn-dims { color: var(--muted); }
-    .graph-node .gn-note {
-      font-size: 9px; color: var(--muted); line-height: 1.2;
-      opacity: 0.82; margin: 0;
-    }
-    .graph-node .gn-thumb {
-      width: 100%; aspect-ratio: 4 / 3; border-radius: 6px;
-      background: var(--preview-bg); border: 1px solid var(--preview-border);
-      object-fit: cover; display: block;
-    }
-    details.step-cards-detail {
-      margin: 6px 0 4px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--inset);
-      padding: 4px 8px 8px;
-    }
-    details.step-cards-detail > summary {
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 650;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      padding: 4px 0;
-    }
 
     .role-modal {
       border: 1px solid var(--line);
@@ -436,32 +250,7 @@
         <button id="btnTheme" type="button" title="Toggle dark / light">Dark</button>
       </div>
       <div class="row" id="steps"></div>
-      <div class="dims" id="dims"></div>
       <p class="flow-hint">Main view is the shop graph · click a node for 3D + side panel</p>
-      <details class="step-cards-detail" id="stepCardsDetail">
-        <summary>Step detail cards (optional)</summary>
-        <div class="flow-cards" id="flowCards" aria-label="Step materials, machine, and output">
-          <button type="button" class="flow-card materials" id="cardMaterials" data-role="materials">
-            <div class="fc-title">Materials</div>
-            <div class="fc-callout" id="cardMaterialsCallout"></div>
-            <img class="fc-preview" id="cardMaterialsImg" alt="Materials preview" />
-          </button>
-          <button type="button" class="flow-card machine" id="cardMachine" data-role="machine">
-            <div class="fc-title">Machine</div>
-            <div class="fc-callout" id="cardMachineCallout"></div>
-            <img class="fc-preview" id="cardMachineImg" alt="Machine preview" />
-          </button>
-          <button type="button" class="flow-card output" id="cardOutput" data-role="output">
-            <div class="fc-title">Output</div>
-            <div class="fc-callout" id="cardOutputCallout"></div>
-            <img class="fc-preview" id="cardOutputImg" alt="Output preview" />
-          </button>
-        </div>
-      </details>
-      <div id="cutSection">
-        <h2 id="cutHeading">Hex cut counts</h2>
-        <div class="cutbox" id="cutlist"></div>
-      </div>
       <details class="hex-meta" id="hexMeta">
         <summary>Hex summary (collapsed)</summary>
         <div class="meta-body" id="hexMetaBody"></div>
@@ -704,7 +493,10 @@ import * as THREE from 'three';
     const NODE_H = 162;
 
     function halfDimsLabel() {
-      return units === 'mm' ? `${STRUT_H}×${STOCK_W} mm` : `${STRUT_H_IN} × ${STOCK_W_IN}`;
+      // After rip, halves keep full stock length (RAW_STOCK_LEN)
+      return units === 'mm'
+        ? `${STRUT_H}×${STOCK_W}×${RAW_STOCK_LEN} mm`
+        : `${STRUT_H_IN} × ${STOCK_W_IN} × ${RAW_STOCK_LEN_IN}`;
     }
     function stockDimsLabel() {
       return units === 'mm'
@@ -1563,34 +1355,6 @@ import * as THREE from 'three';
       roleState[role].visible = !!visible;
     }
 
-    function updateFlowCards(previews) {
-      const wrap = document.getElementById('flowCards');
-      const nVis = ['materials', 'machine', 'output'].filter((r) => roleState[r].visible).length;
-      wrap.classList.toggle('two-col', nVis === 2);
-      wrap.classList.toggle('one-col', nVis === 1);
-
-      const specs = [
-        ['materials', 'cardMaterials', 'cardMaterialsCallout', 'cardMaterialsImg'],
-        ['machine', 'cardMachine', 'cardMachineCallout', 'cardMachineImg'],
-        ['output', 'cardOutput', 'cardOutputCallout', 'cardOutputImg']
-      ];
-      for (const [role, cardId, callId, imgId] of specs) {
-        const card = document.getElementById(cardId);
-        const vis = roleState[role].visible;
-        card.hidden = !vis;
-        document.getElementById(callId).textContent = roleState[role].callout;
-        const img = document.getElementById(imgId);
-        const src = (previews && previews[role]) || '';
-        if (src) {
-          img.src = src;
-          img.style.display = '';
-        } else {
-          img.removeAttribute('src');
-          img.style.display = vis ? '' : 'none';
-        }
-      }
-    }
-
     function buildRipMaterials() {
       // PDF 2×6 stack only (input) — proportions from 950ad3b / d5fec81
       addMaterialsPad(1.2, 1.0);
@@ -1636,9 +1400,7 @@ import * as THREE from 'three';
       const stackMat = shared.stackMat;
       const stackBaseY = shared.stackBaseY;
       const stackTopY = shared.stackTopY;
-      const halfLabel = units === 'mm'
-        ? `${STRUT_H}×${STOCK_W} mm`
-        : `${STRUT_H_IN} × ${STOCK_W_IN}`;
+      const halfLabel = halfDimsLabel();
       const halfFaceW = faceH * (STOCK_W / STRUT_H);
       const halfFaceH = faceH;
       const halfFaceL = faceL;
@@ -1694,9 +1456,9 @@ import * as THREE from 'three';
           );
           half.position.set(x, STRUT_H / 2000, 0);
           woodTarget.add(half);
-          woodTarget.add(makeLabel(i === 0 ? `${fmt(STRUT_H)}×${fmt(STOCK_W)} stained` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
+          woodTarget.add(makeLabel(i === 0 ? `${halfDimsLabel()} stained` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
         });
-        return `matched pair · ${fmt(STRUT_H)}×${fmt(STOCK_W)}`;
+        return `matched pair · ${halfDimsLabel()}`;
       }
       if (key === 'blank') {
         addMaterialsPad(1.15, 1.0);
@@ -2094,9 +1856,9 @@ import * as THREE from 'three';
           );
           half.position.set(x, STRUT_H / 2000, 0);
           woodTarget.add(half);
-          woodTarget.add(makeLabel(i === 0 ? `${fmt(STRUT_H)}×${fmt(STOCK_W)} stained` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
+          woodTarget.add(makeLabel(i === 0 ? `${halfDimsLabel()} stained` : 'matched pair', new THREE.Vector3(x, 0.08, 0.4)));
         });
-        outCall = `matched pair · ${fmt(STRUT_H)}×${fmt(STOCK_W)}`;
+        outCall = `matched pair · ${halfDimsLabel()}`;
       } else if (view === 'blanks') {
         // Materials: ripped half stock cue
         addMaterialsPad(1.0, 0.9);
@@ -2104,7 +1866,7 @@ import * as THREE from 'three';
         halfIn.position.set(0, 0.09, 0);
         woodTarget.add(halfIn);
         addDarkOutline(halfIn);
-        const halfLbl = units === 'mm' ? `${STRUT_H}×${STOCK_W} mm` : `${STRUT_H_IN} × ${STOCK_W_IN}`;
+        const halfLbl = halfDimsLabel();
         woodTarget.add(makeLabel(`ripped half ${halfLbl}`, new THREE.Vector3(0, 0.28, 0)));
         matCall = `input · ${halfLbl}`;
 
@@ -2120,7 +1882,7 @@ import * as THREE from 'three';
         woodTarget.add(makeLabel(`1 of ${blankQty} shown  (${HEX.qty} panels × 3)`, new THREE.Vector3(0.05, -0.08, 0)));
         outCall = `${blankQty} · ${blankWhlLabel()}`;
       } else if (view === 'bevel') {
-        const halfLbl = units === 'mm' ? `${STRUT_H}×${STOCK_W} mm` : `${STRUT_H_IN} × ${STOCK_W_IN}`;
+        const halfLbl = halfDimsLabel();
         const finLbl = units === 'mm' ? `${STRUT_H}×${STRUT_W} mm` : `${STRUT_H_IN} × ${STRUT_W_IN}`;
         addMaterialsPad(1.0, 0.9);
         const halfIn = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.18), woodMat);
@@ -2240,14 +2002,6 @@ import * as THREE from 'three';
       setRoleMeta('machine', machCall, showMachineCard && machineRoot.children.length > 0);
       setRoleMeta('output', outCall, showOutput && outputRoot.children.length > 0);
 
-      // Capture static isometric previews
-      const previews = {
-        materials: roleState.materials.visible ? captureRolePreview(materialsRoot) : '',
-        machine: roleState.machine.visible ? captureRolePreview(machineRoot) : '',
-        output: roleState.output.visible ? captureRolePreview(outputRoot) : ''
-      };
-      updateFlowCards(previews);
-
       // Quiet main overview: materials (or output if no materials), centered
       overviewRoot.clear();
       const grid = new THREE.GridHelper(3.2, 12, 0x2a3140, 0x1a1e26);
@@ -2256,7 +2010,7 @@ import * as THREE from 'three';
       const focus = roleState.materials.visible ? materialsRoot
         : (roleState.output.visible ? outputRoot : machineRoot);
       if (focus && focus.children.length) {
-        // Clone for overview so cards keep originals in roleHold
+        // Clone for overview so role roots stay in roleHold
         const clone = focus.clone(true);
         // Strip CSS2D clones (DOM would duplicate)
         const strip = [];
@@ -2355,7 +2109,7 @@ import * as THREE from 'three';
       modalRole = null;
       graphModalNodeId = nodeId;
       window.__graphStepDirty = false;
-      // Jump step chrome to related step (dims / setup) without fighting graph
+      // Jump step chrome to related step without fighting graph
       if (typeof n.stepId === 'number' && n.stepId !== step) {
         step = n.stepId;
         window.__graphStepDirty = true;
@@ -2364,7 +2118,6 @@ import * as THREE from 'three';
         renderSteps();
         setDims();
         setMachineSetup();
-        setCutList();
         // Defer full rebuild until modal closes — keep this node's root alive
         highlightGraphForStep();
       }
@@ -2411,9 +2164,6 @@ import * as THREE from 'three';
       }
     }
 
-    document.getElementById('cardMaterials').onclick = () => openRoleModal('materials');
-    document.getElementById('cardMachine').onclick = () => openRoleModal('machine');
-    document.getElementById('cardOutput').onclick = () => openRoleModal('output');
     document.getElementById('roleModalClose').onclick = () => closeRoleModal();
     modalEl.addEventListener('cancel', (e) => { e.preventDefault(); closeRoleModal(); });
     modalEl.addEventListener('click', (e) => {
@@ -2427,24 +2177,6 @@ import * as THREE from 'three';
         `Miters off 90°: apex ${HEX.apex}° · bases ${HEX.base}° / ${HEX.base}°`,
         `Stock: PDF (${RAW_STOCK_QTY}) 2×6 ×${fmt(RAW_STOCK_LEN)} → rip ${fmt(STRUT_H)} × ${fmt(STOCK_W)} · bevel ${BEVEL_DEG}° → finished ${fmt(STRUT_H)} × ${fmt(STRUT_W)}`
       ].join('\n');
-    }
-
-    function fullCutCounts() {
-      return [
-        `Hex panels: ${HEX.qty} including 4 windows`,
-        `Struts total: ${HEX.qty * 3}`,
-        `Blank length: ~${fmt(BLANK_LEN)} (longest side ${fmt(HEX.a)})`,
-        `Finished long-point: ${HEX.qty * 2} × side ${planDual(HEX.a, HEX.aIn)} + ${HEX.qty} × base ${planDual(HEX.c, HEX.cIn)}`,
-        `Per panel sides: a=${fmt(HEX.a)}  b=${fmt(HEX.b)}  c=${fmt(HEX.c)}`,
-        `First-end miters: ${HEX.qty * 2} × ${HEX.base}° + ${HEX.qty} × ${HEX.apex}°`,
-        `Cross-section: ${fmt(STRUT_H)} × ${fmt(STOCK_W)} stock → ${fmt(STRUT_H)} × ${fmt(STRUT_W)} + ${BEVEL_DEG}°`,
-        `Screws (2×3 corners×panels): ${HEX.qty * 6}`
-      ];
-    }
-
-    function setPanelVisible(el, on) {
-      if (!el) return;
-      el.hidden = !on;
     }
 
     /** Build machineSetup content from a STEPS entry; null if empty. */
@@ -2570,69 +2302,7 @@ import * as THREE from 'three';
     function setMachineSetup() { /* no-op: setup shown in roleModal */ }
 
     function setDims() {
-      const s = STEPS[step];
-      document.getElementById('dims').textContent = s.title + '\n' + s.text();
       document.getElementById('hexMetaBody').textContent = fullHexSummary();
-    }
-
-    function setCutList() {
-      const s = STEPS[step];
-      const sec = document.getElementById('cutSection');
-      const box = document.getElementById('cutlist');
-      const head = document.getElementById('cutHeading');
-      let lines = null;
-      let heading = 'This step';
-
-      if (s.id === 0) {
-        heading = 'Cut — rip stock';
-        lines = [
-          `PDF stock: (${RAW_STOCK_QTY}) ${fmt(STRUT_H)}×${fmt(FULL_2X6_W)}×${fmt(RAW_STOCK_LEN)} kiln-dried`,
-          `Cross-section: 2×6 → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}`
-        ];
-      } else if (s.id === 1) {
-        heading = 'Cut — blanks';
-        lines = [
-          `Strut blanks: ${HEX.qty * 3} (1 shown in 3D)`,
-          `Blank w × h × l: ${blankWhlLabel()}`,
-          `From ripped halves · longest side ${fmt(HEX.a)} · ${HEX.qty} panels × 3`,
-          blankStockLeftoverSetupLine()
-        ];
-      } else if (s.id === 3) {
-        heading = 'Layout — jig';
-        lines = [`Base ${fmt(HEX.c)} · arcs ${fmt(HEX.a)} / ${fmt(HEX.b)}`];
-      } else if (s.id === 4) {
-        heading = 'Cut — bevel';
-        lines = [
-          `${fmt(STRUT_H)} × ${fmt(STOCK_W)} → ${fmt(STRUT_H)} × ${fmt(STRUT_W)} + ${BEVEL_DEG}°`
-        ];
-      } else if (s.id === 6) {
-        heading = 'Cut — initial miters';
-        lines = [
-          `First-end: ${HEX.qty * 2} × ${HEX.base}° (bases) + ${HEX.qty} × ${HEX.apex}° (apex)`,
-          `Long-point sides: ${HEX.qty * 2} × ${planDual(HEX.a, HEX.aIn)} + ${HEX.qty} × ${planDual(HEX.c, HEX.cIn)}`
-        ];
-      } else if (s.id === 7) {
-        heading = 'Cut — compound ears';
-        lines = [
-          `Apex miter ${HEX.apex}° + ${BEVEL_DEG}° bevel`,
-          `Base miters ${HEX.base}° + ${BEVEL_DEG}° bevel`
-        ];
-      } else if (s.id === 8) {
-        heading = 'Assemble';
-        lines = [`Screws (2×3 corners×panels): ${HEX.qty * 6}`];
-      } else if (s.id === 9) {
-        heading = 'Hex cut counts — final';
-        lines = fullCutCounts();
-      }
-
-      if (!lines) {
-        setPanelVisible(sec, false);
-        box.textContent = '';
-        return;
-      }
-      setPanelVisible(sec, true);
-      head.textContent = heading;
-      box.textContent = lines.join('\n');
     }
 
     function renderSteps() {
@@ -2656,7 +2326,6 @@ import * as THREE from 'three';
       renderSteps();
       setDims();
       setMachineSetup();
-      setCutList();
       rebuild();
       // Unit toggle (and theme) refresh side-panel text via reopen
       if (reopenNodeId) openGraphNodeModal(reopenNodeId);
@@ -2678,7 +2347,7 @@ import * as THREE from 'three';
       try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
       applyThemeDom();
       applyThemeScenes();
-      // Rebuild so CSS2D labels + card preview captures pick up new bg/colors
+      // Rebuild so CSS2D labels + graph previews pick up new bg/colors
       sync();
     }
 
