@@ -40,6 +40,7 @@ export const BEVEL_RAD = (BEVEL_DEG * Math.PI) / 180;
 export const BLANK_LEN = 1219;   // ~4' handling blanks
 export const BLANK_LEN_IN = "4'-0\"";
 export const FULL_2X6_W = 140;   // full 2×6 section before rip (~5½")
+export const FULL_2X6_W_IN = '5½"';
 
 /** Locked shop tools (Hex guide machine-setup panel) */
 export const TOOL_TABLE_SAW = 'DEWALT DWE7492 table saw';
@@ -161,7 +162,8 @@ export const PLAN_IN = new Map([
   [STRUT_H, STRUT_H_IN],
   [STOCK_W, STOCK_W_IN],
   [STRUT_W, STRUT_W_IN],
-  [BLANK_LEN, BLANK_LEN_IN]
+  [BLANK_LEN, BLANK_LEN_IN],
+  [FULL_2X6_W, FULL_2X6_W_IN]
 ]);
 
 export const META = Object.freeze({
@@ -193,6 +195,7 @@ export default {
   BLANK_LEN,
   BLANK_LEN_IN,
   FULL_2X6_W,
+  FULL_2X6_W_IN,
   TOOL_TABLE_SAW,
   TOOL_MITER_SAW,
   PLAN_IN,

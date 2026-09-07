@@ -422,6 +422,33 @@
       return obj;
     }
 
+    /** Dark edge outline so wood blanks/struts read against the scene */
+    function addDarkOutline(mesh, color = 0x000000) {
+      // EdgesGeometry lines + slight back-face shell (WebGL ignores linewidth)
+      const edges = new THREE.EdgesGeometry(mesh.geometry);
+      const line = new THREE.LineSegments(
+        edges,
+        new THREE.LineBasicMaterial({ color })
+      );
+      mesh.add(line);
+      const shell = new THREE.Mesh(
+        mesh.geometry,
+        new THREE.MeshBasicMaterial({ color, side: THREE.BackSide })
+      );
+      shell.scale.multiplyScalar(1.035);
+      mesh.add(shell);
+      return line;
+    }
+
+    /** Active-unit blank cross-section × length (w × h × l) from panel-specs */
+    function blankWhlLabel() {
+      // w = full 2×6 face width, h = thickness, l = blank length
+      const w = fmt(FULL_2X6_W);
+      const h = fmt(STRUT_H);
+      const l = fmt(BLANK_LEN);
+      return `${w} × ${h} × ~${l}`;
+    }
+
     function strutMesh(lengthMm, faceWmm = STRUT_W, mat = woodMat) {
       const L = lengthMm / 1000;
       const h = STRUT_H / 1000;
@@ -842,8 +869,14 @@
         );
         blank.position.set(0.05, 0.11, 0);
         woodTarget.add(blank);
-        woodTarget.add(makeLabel(`2×6 blank ~${fmt(BLANK_LEN)}`, new THREE.Vector3(0.05, 0.36, 0)));
-        woodTarget.add(makeLabel(`× ${HEX.qty * 3} strut blanks`, new THREE.Vector3(0.05, -0.08, 0)));
+        addDarkOutline(blank);
+        const blankQty = HEX.qty * 3; // 73 panels × 3 = 219 strut blanks
+        woodTarget.add(makeLabel(`2×6 blank  w × h × l`, new THREE.Vector3(0.05, 0.42, 0)));
+        woodTarget.add(makeLabel(blankWhlLabel(), new THREE.Vector3(0.05, 0.32, 0)));
+        woodTarget.add(makeLabel(
+          `1 of ${blankQty} shown  (${HEX.qty} panels × 3)`,
+          new THREE.Vector3(0.05, -0.08, 0)
+        ));
       }
 
       if (showWood && view === 'stock') {
@@ -1073,8 +1106,9 @@
       if (s.id === 0) {
         heading = 'Cut — blanks';
         lines = [
-          `Strut blanks: ${HEX.qty * 3}`,
-          `Blank length: ~${fmt(BLANK_LEN)} (longest side ${fmt(HEX.a)})`
+          `Strut blanks: ${HEX.qty * 3} (1 shown in 3D)`,
+          `Blank w × h × l: ${blankWhlLabel()}`,
+          `Longest side ${fmt(HEX.a)} · ${HEX.qty} panels × 3`
         ];
       } else if (s.id === 1) {
         heading = 'Cut — rip stock';
