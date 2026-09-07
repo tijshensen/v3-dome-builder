@@ -45,9 +45,21 @@ export const FULL_2X6_W_IN = '5½"';
 export const RAW_STOCK_QTY = 32;     // (32) pieces on PDF list
 export const RAW_STOCK_LEN = 4000;   // 4 m full-length boards before blanking
 export const RAW_STOCK_LEN_IN = "13'-1½\"";
-/** Reasoned leftover after 3 blanks from one RAW_STOCK_LEN board (ignores kerf). */
-export const BLANK_STOCK_LEFTOVER = RAW_STOCK_LEN - 3 * BLANK_LEN; // 343 ≈ 13½"
-export const BLANK_STOCK_LEFTOVER_IN = '13½"';
+/** Blade kerf (mm) for blank leftover + sawdust volume math. */
+export const BLADE_KERF_MM = 2.5;
+export const BLADE_KERF_IN = '⅛"'; // ~2.5 mm (sixteenths round)
+
+/**
+ * Reasoned leftover after n=3 blanks from one RAW_STOCK_LEN ripped half.
+ * Assume 3 kerf cuts (each blank cut off remaining stock):
+ *   leftover = RAW_STOCK_LEN − 3×BLANK_LEN − 3×BLADE_KERF_MM
+ *            = 4000 − 3657 − 7.5 = 335.5 mm
+ * Crosscut sawdust / half (mm³) = BLADE_KERF_MM × STRUT_H × STOCK_W × 3
+ * Optional rip sawdust / board (mm³) = BLADE_KERF_MM × STRUT_H × RAW_STOCK_LEN
+ */
+export const BLANK_STOCK_LEFTOVER =
+  RAW_STOCK_LEN - 3 * BLANK_LEN - 3 * BLADE_KERF_MM; // 335.5 ≈ 1'-1 3/16"
+export const BLANK_STOCK_LEFTOVER_IN = "1'-1 3/16\"";
 
 /** Locked shop tools (Hex guide machine-setup panel) */
 export const TOOL_TABLE_SAW = 'DEWALT DWE7492 table saw';
@@ -172,7 +184,8 @@ export const PLAN_IN = new Map([
   [BLANK_LEN, BLANK_LEN_IN],
   [FULL_2X6_W, FULL_2X6_W_IN],
   [RAW_STOCK_LEN, RAW_STOCK_LEN_IN],
-  [BLANK_STOCK_LEFTOVER, BLANK_STOCK_LEFTOVER_IN]
+  [BLANK_STOCK_LEFTOVER, BLANK_STOCK_LEFTOVER_IN],
+  [BLADE_KERF_MM, BLADE_KERF_IN]
 ]);
 
 export const META = Object.freeze({
@@ -208,6 +221,8 @@ export default {
   RAW_STOCK_QTY,
   RAW_STOCK_LEN,
   RAW_STOCK_LEN_IN,
+  BLADE_KERF_MM,
+  BLADE_KERF_IN,
   BLANK_STOCK_LEFTOVER,
   BLANK_STOCK_LEFTOVER_IN,
   TOOL_TABLE_SAW,
