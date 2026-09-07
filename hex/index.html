@@ -886,53 +886,72 @@
 
       if (showWood && view === 'stock') {
         if (STEPS[step].machineVisual === 'tableRip') {
-          // MATERIALS: PDF 2×6 → two halves. Sizes from FULL_2X6_W × STRUT_H × RAW_STOCK_LEN.
-          if (split) addMaterialsPad(1.25, 1.05);
+          // MATERIALS: stack of PDF 2×6 stock (RAW_STOCK_QTY) → rip → matched halves.
+          // Board mesh proportions from FULL_2X6_W × STRUT_H × RAW_STOCK_LEN (950ad3b).
+          if (split) addMaterialsPad(1.55, 1.2);
           const halfLabel = units === 'mm'
             ? `${STRUT_H}×${STOCK_W} mm`
             : `${STRUT_H_IN} × ${STOCK_W_IN}`;
-          const stockCallout = units === 'mm'
-            ? `(${RAW_STOCK_QTY}) ${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm`
-            : `(${RAW_STOCK_QTY}) ${STRUT_H_IN} × ${FULL_2X6_W_IN} × ${RAW_STOCK_LEN_IN}`;
+          // One qty callout + dims once (no per-board dim spam).
+          const stockQty = `(${RAW_STOCK_QTY})`;
+          const stockDims = units === 'mm'
+            ? `${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm`
+            : `${STRUT_H_IN} × ${FULL_2X6_W_IN} × ${RAW_STOCK_LEN_IN}`;
 
-          // Mesh proportions from panel-specs FULL_2X6_W × STRUT_H × RAW_STOCK_LEN.
-          // BoxGeometry(w,h,l) with l longest. Yaw ~37° so length projects on screen (camera
-          // looks ~−Z; without yaw, Z-length foreshortens → squat). Prior (0.52, 0.22, 0.18)
-          // had length shortest vs 38×140×4000 labels.
-          const faceW = 0.16;
-          const faceH = faceW * (STRUT_H / FULL_2X6_W);
-          const faceL = Math.min(faceW * (RAW_STOCK_LEN / FULL_2X6_W), 1.25);
-          const halfFaceW = faceW * (STOCK_W / FULL_2X6_W);
-          const yaw = 0.65; // radians — swing length toward screen X
+          // Fit RAW_STOCK_QTY boards + small gaps in MATERIALS; keep w×h×l ratios.
+          // BoxGeometry(w,h,l) with l longest; yaw so length reads on screen (−Z cam).
+          const n = RAW_STOCK_QTY;
+          const stackBudgetH = 0.94;
+          const gapRatio = 1.15; // gap vs thickness — small but clearly readable stripes
+          const faceH = stackBudgetH / (n + gapRatio * (n - 1));
+          const gap = faceH * gapRatio;
+          const faceW = faceH * (FULL_2X6_W / STRUT_H);
+          const faceL = Math.min(faceW * (RAW_STOCK_LEN / FULL_2X6_W), 0.70);
+          // Mild yaw — keep length readable without sliding under the left UI.
+          const yaw = 0.35;
+          // Visible MATERIALS band is right of the opaque sidebar; keep meshes there.
+          const stackX = 0.42;
+          const stackBaseY = 0.01;
+          const stackTopY = stackBaseY + n * faceH + (n - 1) * gap;
+          const stackMidY = (stackBaseY + stackTopY) / 2;
 
-          const full = new THREE.Mesh(
-            new THREE.BoxGeometry(faceW, faceH, faceL),
-            woodMat
-          );
-          full.rotation.y = yaw;
-          full.position.set(-0.32, 0.14 + faceH / 2, 0);
-          woodTarget.add(full);
-          addDarkOutline(full);
-          woodTarget.add(makeLabel('PDF 2×6 kiln-dried', new THREE.Vector3(-0.32, 0.40, 0)));
-          woodTarget.add(makeLabel(stockCallout, new THREE.Vector3(-0.32, -0.06, 0)));
+          const stackMat = woodMat.clone();
+          stackMat.emissive = new THREE.Color(0x2a1808);
+          stackMat.emissiveIntensity = 0.22;
+          for (let i = 0; i < n; i++) {
+            // Unique geometry per board — shared BoxGeometry + outline children can
+            // confuse bounds/culling when many thin slabs share one buffer.
+            const board = new THREE.Mesh(new THREE.BoxGeometry(faceW, faceH, faceL), stackMat);
+            board.frustumCulled = false;
+            board.rotation.y = yaw;
+            board.position.set(stackX, stackBaseY + faceH / 2 + i * (faceH + gap), 0);
+            woodTarget.add(board);
+            addDarkOutline(board);
+          }
+          woodTarget.add(makeLabel('PDF 2×6 kiln-dried', new THREE.Vector3(stackX, stackTopY + 0.09, 0)));
+          woodTarget.add(makeLabel(`${stockQty}  ${stockDims}`, new THREE.Vector3(stackX, stackBaseY - 0.08, 0)));
 
           const arr = arrowMesh(new THREE.Vector3(1, 0, 0), 0xc48a4a);
-          arr.position.set(0.02, 0.18, 0);
+          arr.position.set(0.72, stackMidY, 0);
           woodTarget.add(arr);
-          woodTarget.add(makeLabel('rip in half', new THREE.Vector3(0.02, 0.42, 0)));
+          woodTarget.add(makeLabel('rip in half', new THREE.Vector3(0.72, stackTopY + 0.09, 0)));
 
-          [0.26, 0.26 + halfFaceW + 0.06].forEach((x) => {
-            const half = new THREE.Mesh(
-              new THREE.BoxGeometry(halfFaceW, faceH, faceL),
-              woodMat
-            );
+          // Halves: same proportions as ripped stock, scaled up slightly for read vs thin stack boards.
+          const halfScale = 2.4;
+          const halfFaceW = faceW * (STOCK_W / FULL_2X6_W) * halfScale;
+          const halfFaceH = faceH * halfScale;
+          const halfFaceL = Math.min(faceL, 0.85);
+          const halfGeo = new THREE.BoxGeometry(halfFaceW, halfFaceH, halfFaceL);
+          const halfX0 = 0.92;
+          [halfX0, halfX0 + halfFaceW + 0.04].forEach((x) => {
+            const half = new THREE.Mesh(halfGeo, woodMat);
             half.rotation.y = yaw;
-            half.position.set(x, 0.14 + faceH / 2, 0);
+            half.position.set(x, stackMidY, 0);
             woodTarget.add(half);
             addDarkOutline(half);
           });
-          woodTarget.add(makeLabel(halfLabel, new THREE.Vector3(0.36, 0.40, 0)));
-          woodTarget.add(makeLabel('matched pair', new THREE.Vector3(0.36, -0.06, 0)));
+          woodTarget.add(makeLabel(halfLabel, new THREE.Vector3(1.00, stackTopY + 0.09, 0)));
+          woodTarget.add(makeLabel('matched pair', new THREE.Vector3(1.00, stackBaseY - 0.08, 0)));
         }
         if (STEPS[step].machineVisual === 'none') {
           // Optional finish — no saw; stained matched pairs
