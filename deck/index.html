@@ -108,10 +108,14 @@
     <div class="row" id="steps"></div>
     <div class="dims" id="dims"></div>
     <div class="machinesetup" id="machinesetup" aria-live="polite"></div>
-    <h2>Cut list (20′ Component Dimensions)</h2>
-    <div class="cutbox" id="cutlist"></div>
-    <h2>Materials (PDF p2)</h2>
-    <div class="matbox" id="matlist"></div>
+    <div id="cutSection">
+      <h2 id="cutHeading">Cut list (20′ Component Dimensions)</h2>
+      <div class="cutbox" id="cutlist"></div>
+    </div>
+    <div id="matSection">
+      <h2 id="matHeading">Materials (PDF p2)</h2>
+      <div class="matbox" id="matlist"></div>
+    </div>
     <div class="hint">
       Drag orbit · scroll zoom · right-drag pan<br>
       Machine polish deferred — written setup + schematics. Milestone: girders cut + site layout (PDF p6/p8).<br>
@@ -179,7 +183,7 @@ const STEPS = [
     split: false,
     brand: null,
     text: () =>
-      `${DECK_LABEL}. Area ${AREA_SQ_FT} sq ft. Nearest Trillium PDF diameter for the 18′ 5/8 3v dome — use locked 20′ Component Dimensions (PDF p4), not interpolated 18′ lengths.\n\nLayout check (PDF Girder Layout - 20′, p6): outer side ${fmt(LAYOUT.outerSideMm)}; inner Δ ${fmt(LAYOUT.innerTriangleMm)}; height ${fmt(LAYOUT.heightMm)}; to center ${fmt(LAYOUT.toCenterMm)}; diagonal ${fmt(LAYOUT.diagonalMm)}.`,
+      `${DECK_LABEL}. Area ${AREA_SQ_FT} sq ft. Nearest Trillium PDF diameter for the 18′ 5/8 3v dome — do not interpolate 18′ lengths.\n\nPDF pointers: Materials p2 · Component Dimensions p4 · Girder Layout - 20′ p6 · Detail Figures p8 · Build Notes p9.`,
     machineSetup: {
       machines: () => 'Read plans · no saw yet',
       settings: () => [
@@ -197,9 +201,7 @@ const STEPS = [
     split: false,
     brand: null,
     text: () =>
-      `Pull size-specific lumber for 20′ (PDF Materials p2):\n` +
-      MATERIALS.sizeSpecific.map(m => `• ${m.qty}× ${m.desc}`).join('\n') +
-      `\n\nGeneral: lags, 32′ strapping, 250× 3½″ nails, 15 post/base assemblies, 2×4 bracing.`,
+      `Stage size-specific lumber and general hardware for the 20′ plan (PDF Materials p2). Lists are in the Materials panel below — do not restate or invent quantities.`,
     machineSetup: {
       machines: () => 'None / staging',
       settings: () => [
@@ -289,15 +291,14 @@ const STEPS = [
     split: true,
     brand: 'makita',
     text: () =>
-      `Cut ${OUTER_GIRDER.qty} outer girders @ ${fmt(OUTER_GIRDER.lenMm)} long-to-long, ${OUTER_GIRDER.angleDeg}° both ends from ${OUTER_GIRDER.stock} (PDF Component Dimensions p4).\n\nPrefer LS1019L for 4×6. Note: cut length ≠ layout outer side ${fmt(LAYOUT.outerSideMm)} (PDF Girder Layout - 20′, p6) — do not substitute.`,
+      `Cut ${OUTER_GIRDER.qty} outer girders @ ${fmt(OUTER_GIRDER.lenMm)} long-to-long, ${OUTER_GIRDER.angleDeg}° both ends from ${OUTER_GIRDER.stock} (PDF Component Dimensions p4).\n\nPrefer LS1019L for 4×6. Cut length ≠ layout outer side — see step 10 (PDF Girder Layout - 20′, p6). Overlap / cut-off excess is on Assemble (step 9, PDF p8).`,
     machineSetup: {
       machines: () => `${TOOL_MITER_SAW} (prefer for 4×6)`,
       settings: () => [
         `Miter ${OUTER_GIRDER.angleDeg}° both ends (mirror)`,
         'Bevel 0° · measure long-to-long',
         `Stop / mark at ${fmt(OUTER_GIRDER.lenMm)} long points`,
-        `Batch ${OUTER_GIRDER.qty} from ${OUTER_GIRDER.stock} — support long stock`,
-        'On site: overlapping joint — cut off excess (PDF Detail Figures p8)'
+        `Batch ${OUTER_GIRDER.qty} from ${OUTER_GIRDER.stock} — support long stock`
       ]
     },
     view: 'cutGirder',
@@ -328,15 +329,15 @@ const STEPS = [
     split: false,
     brand: null,
     text: () =>
-      `On site — PDF Detail Figures (p8) + Build Notes (PDF p9) sequence starts here.\n\n• Seat overlapping joints on outer + inner girders (p8)\n• Cut off excess after overlap seats (p8)\n• Fasten girders with lag screws on site now (PDF p9) — 8″ GRK / equiv at joints — before layout checks or post marking\n• Inner Δ check ${fmt(LAYOUT.innerTriangleMm)}; outer side layout ${fmt(LAYOUT.outerSideMm)} (PDF Girder Layout - 20′, p6). Cut lengths stay ${fmt(OUTER_GIRDER.lenMm)} / ${fmt(INNER_GIRDER.lenMm)} (p4)`,
+      `On site — PDF Detail Figures (p8) + Build Notes (PDF p9) sequence starts here.\n\n• Seat overlapping joints on outer + inner girders (p8)\n• Cut off excess after overlap seats (p8)\n• Fasten girders with lag screws on site now (PDF p9) — 8″ GRK / equiv at joints — before layout checks or post marking\n\nFull layout checks (outer side / inner Δ / height / to-center / diagonal) are step 10 (PDF Girder Layout - 20′, p6). Cut lengths stay locked on p4.`,
     machineSetup: {
       machines: () => 'Drill / driver · clamps · tape · square',
       settings: () => [
         'PDF p8: seat overlapping joints; cut off excess',
         'PDF p9: fasten girders with lag screws on site (before diagonal / posts)',
         'Use 8″ GRK or equiv lags at girder joints (PDF p2 hardware)',
-        `Confirm inner Δ ~ ${fmt(LAYOUT.innerTriangleMm)} (p6) after fastening`,
-        'Brace so assembly does not warp while handling (PDF p9)'
+        'Brace so assembly does not warp while handling (PDF p9)',
+        'Next: step 10 site layout checks (PDF p6)'
       ]
     },
     view: 'assembleGirders'
@@ -347,16 +348,14 @@ const STEPS = [
     split: false,
     brand: null,
     text: () =>
-      `After lags (step 9) — Build Notes (PDF p9) continues with layout checks.\n\nPDF Girder Layout - 20′ (p6) — locked check dims (do not interpolate):\n• Outer side ${fmt(LAYOUT.outerSideMm)}\n• Inner Δ ${fmt(LAYOUT.innerTriangleMm)}\n• Height ${fmt(LAYOUT.heightMm)}\n• To center ${fmt(LAYOUT.toCenterMm)}\n• Diagonal ${fmt(LAYOUT.diagonalMm)}\n\nPDF p9: confirm diagonal + brace so girders do not warp → move assembly until both girder sets align to center mark → when dims check out, mark post locations (ideally both sides of girder joint — PDF Detail Figures p8).`,
+      `After lags (step 9) — Build Notes (PDF p9) continues with layout checks.\n\nPDF Girder Layout - 20′ (p6) — locked check dims (do not interpolate):\n• Outer side ${fmt(LAYOUT.outerSideMm)}\n• Inner Δ ${fmt(LAYOUT.innerTriangleMm)}\n• Height ${fmt(LAYOUT.heightMm)}\n• To center ${fmt(LAYOUT.toCenterMm)}\n• Diagonal ${fmt(LAYOUT.diagonalMm)}\n\nPDF p9: confirm diagonal + brace so girders do not warp → align both girder sets to center mark → when dims check out, mark post locations (prefer both sides of overlapping joint — PDF p8).`,
     machineSetup: {
       machines: () => 'String line · tape · laser/string level',
       settings: () => [
         'Prerequisite: girder joints lag-fastened on site (step 9 / PDF p9)',
         'Mark proposed center of deck (PDF p9)',
-        `PDF p6 + p9: confirm diagonal ${fmt(LAYOUT.diagonalMm)}; brace against warp`,
-        `Align both girder sets to center — to-center ${fmt(LAYOUT.toCenterMm)} (p6)`,
-        `Check outer side ${fmt(LAYOUT.outerSideMm)} · height ${fmt(LAYOUT.heightMm)} (p6)`,
-        'Then mark posts — prefer both sides of overlapping joint (PDF p8)'
+        'Confirm all five p6 check dims above; brace against warp',
+        'Align both girder sets to center; then mark posts (PDF p8 / p9)'
       ]
     },
     view: 'layout'
@@ -386,12 +385,13 @@ const STEPS = [
     split: false,
     brand: null,
     text: () =>
-      `Roll joists, nail rim on first, then add blocking (PDF p9). Rim: ${fmtComp(RIM)}. Outer blocks: ${fmtComp(OUTER_BLOCK)}. Inner blocks: ${fmtComp(INNER_BLOCK)}. Joists: ${fmtComp(JOIST)}. Use ~250× 3½″ framing nails.\n\nOptional: nailers on joists for rigid insulation (PDF Detail Figures p8).`,
+      `Roll joists, nail rim on first, then add blocking (PDF p9). Hardware focus: ~250× 3½″ framing nails. Pieces already cut: joists, rim, outer/inner blocks (steps 3–6).\n\nOptional: nailers on joists for rigid insulation (PDF Detail Figures p8).`,
     machineSetup: {
       machines: () => 'Hammer / nailer · square',
       settings: () => [
         'Rim first, then blocking between joists',
         'Keep layout square to girder pentagon (PDF p6 geometry)',
+        '~250× 3½″ framing nails (PDF p2)',
         'Optional nailers for insulation (PDF p8)'
       ]
     },
@@ -643,14 +643,6 @@ function assembleGirdersSchematic() {
   g.add(inner);
   g.add(makeLabel(`inner ${fmt(INNER_GIRDER.lenMm)} · 30°`, new THREE.Vector3(0, 0.3, -1.1), '#7dcea0'));
   g.add(makeLabel('PDF Detail Figures (p8)', new THREE.Vector3(0, 0.7, -0.4), '#9aa3b2'));
-  // strap hint
-  const strap = new THREE.Mesh(
-    new THREE.BoxGeometry(0.04, 0.35, 0.08),
-    new THREE.MeshStandardMaterial({ color: 0xb0b8c4, metalness: 0.7, roughness: 0.35 })
-  );
-  strap.position.set(-0.9, 0.25, 0);
-  g.add(strap);
-  g.add(makeLabel('strap post→girder · p8', new THREE.Vector3(-0.9, 0.55, 0), '#3d8bfd'));
   return g;
 }
 
@@ -701,7 +693,7 @@ function buildView(s) {
       left.add(makeLabel(`${s.piece.qty}× ${fmt(s.piece.lenMm)} L-L`, new THREE.Vector3(0, 0.32, 0.55), '#7dcea0'));
       left.add(makeLabel(`${s.piece.angleDeg}° both ends`, new THREE.Vector3(0, 0.18, 0.55), '#3d8bfd'));
       if (isOuter) {
-        left.add(makeLabel(`layout side ${fmt(LAYOUT.outerSideMm)} (p6)`, new THREE.Vector3(0, 0.05, 0.72), '#f0a202'));
+        left.add(makeLabel('cut ≠ layout side → step 10', new THREE.Vector3(0, 0.05, 0.72), '#f0a202'));
       }
     } else if (s.view === 'cutAngle') {
       const ag = angledBoardSchematic(s.piece.lenMm, s.piece.angleDeg || 12, woodMat);
@@ -739,7 +731,7 @@ function buildView(s) {
       camera.position.set(2.8, 2.4, 3.8);
     } else if (s.view === 'overview' || s.view === 'layout' || s.view === 'posts') {
       const layout = pentagonGirderLayout({
-        showDims: s.view === 'layout' || s.view === 'overview',
+        showDims: s.view === 'layout',
         showJoints: s.view === 'layout' || s.view === 'posts'
       });
       root.add(layout);
@@ -816,27 +808,78 @@ function buildView(s) {
   }
 }
 
-function renderCutList() {
-  const lines = COMPONENTS.map(c => {
-    const ang = c.angleDeg != null ? ` · ${c.angleDeg}° L-L` : ' · square';
-    return `${c.qty}× ${c.name.padEnd(12)} ${fmt(c.lenMm)}${ang}`;
-  });
-  lines.push(`Area ${AREA_SQ_FT} sq ft · PDF Component Dimensions (20′)`);
-  document.getElementById('cutlist').textContent = lines.join('\n');
+function setPanelVisible(el, on) {
+  if (!el) return;
+  el.hidden = !on;
+  el.style.display = on ? '' : 'none';
 }
 
-function renderMaterials() {
-  const a = MATERIALS.sizeSpecific.map(m => `${m.qty}× ${m.desc}`).join('\n');
-  const b = MATERIALS.general.map(m => (m.qty != null ? `${m.qty}× ` : '') + m.desc).join('\n');
-  document.getElementById('matlist').textContent = `Size-specific:\n${a}\n\nGeneral:\n${b}`;
+function renderCutList(s) {
+  const sec = document.getElementById('cutSection');
+  const box = document.getElementById('cutlist');
+  const head = document.getElementById('cutHeading');
+  // Cut steps 3–8 (ids 2–7): only that part's row
+  if (s.piece && s.id >= 2 && s.id <= 7) {
+    const c = s.piece;
+    const ang = c.angleDeg != null ? ` · ${c.angleDeg}° L-L` : ' · square ends';
+    const meas = c.measure ? ` (${c.measure})` : '';
+    setPanelVisible(sec, true);
+    head.textContent = `Cut — ${c.name}`;
+    box.textContent = `${c.qty}× ${c.name} @ ${fmt(c.lenMm)}${meas}${ang}`;
+    return;
+  }
+  setPanelVisible(sec, false);
+  box.textContent = '';
+}
+
+function renderMaterials(s) {
+  const sec = document.getElementById('matSection');
+  const box = document.getElementById('matlist');
+  const head = document.getElementById('matHeading');
+  // Materials pull (id 1): full materials only
+  if (s.id === 1) {
+    const a = MATERIALS.sizeSpecific.map(m => `${m.qty}× ${m.desc}`).join('\n');
+    const b = MATERIALS.general.map(m => (m.qty != null ? `${m.qty}× ` : '') + m.desc).join('\n');
+    setPanelVisible(sec, true);
+    head.textContent = 'Materials (PDF p2)';
+    box.textContent = `Size-specific:\n${a}\n\nGeneral:\n${b}`;
+    return;
+  }
+  // Framing (id 11): nails + joist/rim/blocks stock only
+  if (s.id === 11) {
+    setPanelVisible(sec, true);
+    head.textContent = 'Materials — framing';
+    box.textContent = [
+      '250× 3½″ framing nails or equivalent',
+      '15× 2×6×10′ joists (already cut)',
+      '2×6 stock for rim + outer/inner blocks (already cut)',
+      'Optional: nailers for insulation (PDF p8)'
+    ].join('\n');
+    return;
+  }
+  // Subfloor (id 12): sheets / screws / adhesive only — no lumber cut list
+  if (s.id === 12) {
+    setPanelVisible(sec, true);
+    head.textContent = 'Materials — subfloor';
+    box.textContent = [
+      '9× 4×8′ sheets of subfloor material',
+      '320× 2″ screws (subfloor)',
+      'Optional construction adhesive (PDF p9)'
+    ].join('\n');
+    return;
+  }
+  setPanelVisible(sec, false);
+  box.textContent = '';
 }
 
 function renderMachine(s) {
   const el = document.getElementById('machinesetup');
   const ms = s.machineSetup;
   const settings = ms.settings();
+  // Overview: Prep/Staging (not Machine setup)
+  const title = (s.id === 0 || s.id === 1) ? 'Prep / Staging' : 'Machine setup';
   el.innerHTML =
-    `<div class="ms-title">Machine setup</div>` +
+    `<div class="ms-title">${title}</div>` +
     `<div class="ms-tools">${ms.machines()}</div>` +
     `<ul>${settings.map(x => `<li>${x}</li>`).join('')}</ul>`;
 }
@@ -846,8 +889,8 @@ function renderStep() {
   document.getElementById('stepLabel').textContent = `${step + 1} / ${STEPS.length}`;
   document.getElementById('dims').textContent = `${s.title}\n\n${s.text()}`;
   renderMachine(s);
-  renderCutList();
-  renderMaterials();
+  renderCutList(s);
+  renderMaterials(s);
   document.querySelectorAll('#steps .step').forEach((btn, i) => {
     btn.classList.toggle('active', i === step);
   });
