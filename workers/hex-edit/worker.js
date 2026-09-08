@@ -120,7 +120,7 @@ export default {
           Authorization: `Bearer ${env.XAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'grok-2-latest',
+          model: 'grok-4.6',
           temperature: 0.2,
           messages: [
             { role: 'system', content: SYSTEM },
