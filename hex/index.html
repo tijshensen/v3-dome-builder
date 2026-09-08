@@ -1541,20 +1541,45 @@ import * as THREE from 'three';
     }
 
     function nodeCallout(n) {
-      if (n.kind === 'machine') {
+      const ov = getCurrentOverride(n.id, n.kind);
+      if (n.kind === "machine") {
         const mv = n.machineVisual;
-        if (mv === 'tableRip') return `${TOOL_TABLE_SAW} · rip`;
-        if (mv === 'tableBevel') return `${TOOL_TABLE_SAW} · ${BEVEL_DEG}°`;
-        if (mv === 'miterCrosscut') return `${TOOL_MITER_SAW} · crosscut`;
-        if (mv === 'miterBase') return `${TOOL_MITER_SAW} · base ${HEX.base}°`;
-        if (mv === 'miterApex') return `${TOOL_MITER_SAW} · apex ${HEX.apex}°`;
-        if (mv === 'miterSimple') return `${TOOL_MITER_SAW} · miters`;
-        if (mv === 'miterCompound') return `${TOOL_MITER_SAW} · compound`;
-        if (mv === 'handLayout') return 'hand layout · no saw';
-        if (mv === 'drill') return 'drill / driver';
-        return 'machine';
+        const bevelBit = (ov && ov.bevelDeg != null) ? (" · bevel " + ov.bevelDeg + "°") : "";
+        if (mv === "tableRip") return TOOL_TABLE_SAW + " · rip" + bevelBit;
+        if (mv === "tableBevel") {
+          const bd = (ov && ov.bevelDeg != null) ? ov.bevelDeg : BEVEL_DEG;
+          return TOOL_TABLE_SAW + " · " + bd + "°";
+        }
+        if (mv === "miterCrosscut") {
+          const mb = (ov && ov.miterDeg != null) ? (" · miter " + ov.miterDeg + "°") : "";
+          return TOOL_MITER_SAW + " · crosscut" + mb + bevelBit;
+        }
+        if (mv === "miterBase") {
+          const md = (ov && ov.miterDeg != null) ? ov.miterDeg : HEX.base;
+          return TOOL_MITER_SAW + " · base " + md + "°" + bevelBit;
+        }
+        if (mv === "miterApex") {
+          const md = (ov && ov.miterDeg != null) ? ov.miterDeg : HEX.apex;
+          return TOOL_MITER_SAW + " · apex " + md + "°" + bevelBit;
+        }
+        if (mv === "miterSimple") {
+          const mb = (ov && ov.miterDeg != null) ? (" · miter " + ov.miterDeg + "°") : "";
+          return TOOL_MITER_SAW + " · miters" + mb + bevelBit;
+        }
+        if (mv === "miterCompound") {
+          const mb = (ov && ov.miterDeg != null) ? (" · miter " + ov.miterDeg + "°") : "";
+          return TOOL_MITER_SAW + " · compound" + mb + bevelBit;
+        }
+        if (mv === "handLayout") return "hand layout · no saw";
+        if (mv === "drill") return "drill / driver";
+        return "machine";
       }
-      return formatMaterialCallout(materialCalloutParts(n.materialKey));
+      const base = formatMaterialCallout(materialCalloutParts(n.materialKey));
+      if (ov && ov.stackCount != null) {
+        const rows = ov.stackRows != null ? (" · " + ov.stackRows + " rows") : "";
+        return "stack " + ov.stackCount + rows + (base ? " · " + base : "");
+      }
+      return base;
     }
 
     const _qs = new URLSearchParams(location.search);
@@ -1715,8 +1740,13 @@ import * as THREE from 'three';
     function mockOverrideFromPrompt(prompt, context) {
       const p = String(prompt || '').toLowerCase();
       const out = { schemaVersion: OVERRIDE_SCHEMA_VERSION };
-      if (/\btaller\b|\bbigger\b|\blarger\b/.test(p)) out.scale = 1.35;
-      if (/\bshorter\b|\bsmaller\b/.test(p)) out.scale = 0.75;
+      if (/\btaller\b|\bbigger\b|\blarger\b/.test(p)) out.scale = 1.85;
+      if (/\bshorter\b|\bsmaller\b/.test(p)) out.scale = 0.65;
+      const stackM = p.match(/\bstack(?:count)?\s*[:=]?\s*(\d+)\b/i);
+      if (stackM) out.stackCount = Number(stackM[1]);
+      if (/\bfewer boards\b|\bshort stack\b/.test(p)) out.stackCount = 8;
+      const rowsM = p.match(/\brows?\s*[:=]?\s*(\d+)\b/i);
+      if (rowsM) out.stackRows = Number(rowsM[1]);
       const noteM = p.match(/\bnote:\s*(.+?)(?:\s*[·|]|$)/i) || p.match(/\bnote\s+(.+?)(?:\s*[·|]|$)/i);
       if (noteM) out.note = noteM[1].trim().slice(0, 120);
       const qtyM = p.match(/\bqty\s*[:=]?\s*(\d+)\b/i);
@@ -1988,6 +2018,7 @@ import * as THREE from 'three';
         new THREE.MeshBasicMaterial({ color, side: THREE.BackSide })
       );
       shell.scale.multiplyScalar(1.035);
+      shell.userData.isOutlineShell = true;
       mesh.add(shell);
       return line;
     }
@@ -2168,12 +2199,14 @@ import * as THREE from 'three';
     function addMaterialsPad(w = 1.15, d = 1.2) {
       const pad = new THREE.Mesh(new THREE.BoxGeometry(w, 0.016, d), matPadMat);
       pad.position.set(0, -0.01, 0);
+      pad.userData.isPad = true;
       woodTarget.add(pad);
       const rim = new THREE.Mesh(
         new THREE.BoxGeometry(w + 0.04, 0.006, d + 0.04),
         new THREE.MeshStandardMaterial({ color: 0x3d5c45, roughness: 0.85 })
       );
       rim.position.set(0, -0.02, 0);
+      rim.userData.isRim = true;
       woodTarget.add(rim);
       return pad;
     }
@@ -2523,7 +2556,11 @@ import * as THREE from 'three';
       }
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z, 0.2);
+      // Uniform root.scale grows the bbox; divide it back out so Apply scale
+      // reads as a real size change (otherwise auto-fit cancels it).
+      let maxDim = Math.max(size.x, size.y, size.z, 0.2);
+      const rs = root && root.scale ? root.scale.x : 1;
+      if (Number.isFinite(rs) && rs > 1e-4 && Math.abs(rs - 1) > 1e-4) maxDim /= rs;
       const dist = maxDim * 2.15;
       cam.aspect = aspect;
       cam.near = 0.01;
@@ -2552,44 +2589,57 @@ import * as THREE from 'three';
       roleState[role].visible = !!visible;
     }
 
-    function buildRipMaterials() {
+    function buildRipMaterials(ov) {
       // PDF 2×6 stack only (input) — proportions from 950ad3b / d5fec81
+      // Override stackCount/stackRows change board count / columns clearly.
       addMaterialsPad(1.2, 1.0);
-      const stockQty = `(${RAW_STOCK_QTY})`;
+      const n = Math.min(64, Math.max(1, (ov && ov.stackCount != null) ? ov.stackCount : RAW_STOCK_QTY));
+      const rows = Math.min(16, Math.max(1, (ov && ov.stackRows != null) ? ov.stackRows : 1));
+      const stockQty = `(${n})`;
       const stockDims = units === 'mm'
         ? `${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm`
         : `${STRUT_H_IN} × ${FULL_2X6_W_IN} × ${RAW_STOCK_LEN_IN}`;
-      const n = RAW_STOCK_QTY;
+      const perCol = Math.ceil(n / rows);
       const stackBudgetH = 0.94;
       const gapRatio = 1.15;
-      const faceH = stackBudgetH / (n + gapRatio * (n - 1));
+      const faceH = stackBudgetH / (perCol + gapRatio * Math.max(0, perCol - 1));
       const gap = faceH * gapRatio;
       const faceW = faceH * (FULL_2X6_W / STRUT_H);
       const faceL = Math.min(faceW * (RAW_STOCK_LEN / FULL_2X6_W), 0.70);
       const yaw = 0.35;
-      const stackX = 0;
       const stackBaseY = 0.01;
-      const stackTopY = stackBaseY + n * faceH + (n - 1) * gap;
+      const stackTopY = stackBaseY + perCol * faceH + Math.max(0, perCol - 1) * gap;
       const stackMat = woodMat.clone();
       stackMat.emissive = new THREE.Color(0x2a1808);
       stackMat.emissiveIntensity = 0.22;
-      for (let i = 0; i < n; i++) {
-        const board = new THREE.Mesh(new THREE.BoxGeometry(faceW, faceH, faceL), stackMat);
-        board.frustumCulled = false;
-        board.rotation.y = yaw;
-        board.position.set(stackX, stackBaseY + faceH / 2 + i * (faceH + gap), 0);
-        woodTarget.add(board);
-        addDarkOutline(board);
+      const colGap = Math.max(faceW * 1.25, 0.08);
+      const totalW = rows * faceW + (rows - 1) * colGap;
+      let placed = 0;
+      for (let col = 0; col < rows; col++) {
+        const countInCol = Math.min(perCol, n - placed);
+        const x = rows === 1 ? 0 : (-totalW / 2 + faceW / 2 + col * (faceW + colGap));
+        for (let i = 0; i < countInCol; i++) {
+          const board = new THREE.Mesh(new THREE.BoxGeometry(faceW, faceH, faceL), stackMat);
+          board.frustumCulled = false;
+          board.userData.isWoodContent = true;
+          board.rotation.y = yaw;
+          board.position.set(x, stackBaseY + faceH / 2 + i * (faceH + gap), 0);
+          woodTarget.add(board);
+          addDarkOutline(board);
+          placed++;
+        }
       }
+      const stackX = 0;
+      const rowBit = rows > 1 ? ` · ${rows} rows` : '';
       woodTarget.add(makeLabel('PDF 2×6 kiln-dried', new THREE.Vector3(stackX, stackTopY + 0.09, 0)));
-      woodTarget.add(makeLabel(`${stockQty}  ${stockDims}`, new THREE.Vector3(stackX, stackBaseY - 0.08, 0)));
-      return { callout: `${stockQty}  ${stockDims}`, faceH, gap, faceL, yaw, stackMat, stackBaseY, stackTopY };
+      woodTarget.add(makeLabel(`${stockQty}  ${stockDims}${rowBit}`, new THREE.Vector3(stackX, stackBaseY - 0.08, 0)));
+      return { callout: `${stockQty}  ${stockDims}${rowBit}`, faceH, gap, faceL, yaw, stackMat, stackBaseY, stackTopY, stackCount: n, stackRows: rows };
     }
 
     function buildRipOutput(shared) {
-      // Two half stacks (RAW_STOCK_QTY × 2)
+      // Two half stacks (stackCount × 2)
       addMaterialsPad(1.35, 1.0);
-      const n = RAW_STOCK_QTY;
+      const n = (shared && shared.stackCount != null) ? shared.stackCount : RAW_STOCK_QTY;
       const faceH = shared.faceH;
       const gap = shared.gap;
       const faceL = shared.faceL;
@@ -2609,6 +2659,7 @@ import * as THREE from 'three';
         for (let i = 0; i < n; i++) {
           const half = new THREE.Mesh(new THREE.BoxGeometry(halfFaceW, halfFaceH, halfFaceL), stackMat);
           half.frustumCulled = false;
+          half.userData.isWoodContent = true;
           half.rotation.y = yaw;
           half.position.set(hx, stackBaseY + halfFaceH / 2 + i * (halfFaceH + gap), 0);
           woodTarget.add(half);
@@ -2621,19 +2672,21 @@ import * as THREE from 'three';
     }
 
     /** Build shared material geometry into woodTarget for a GRAPH materialKey. */
-    function buildMaterialKey(key) {
+    function buildMaterialKey(key, ov) {
       const { pA, pB, pC, h, c } = hexPoints();
       const up = new THREE.Vector3(0, 1, 0);
       if (key === 'pdf-2x6') {
-        const shared = buildRipMaterials();
+        const shared = buildRipMaterials(ov);
         return shared.callout;
       }
       if (key === 'ripped-half') {
         // Same stack metrics as rip materials, but only draw the two half stacks.
-        const n = RAW_STOCK_QTY;
+        const n = Math.min(64, Math.max(1, (ov && ov.stackCount != null) ? ov.stackCount : RAW_STOCK_QTY));
+        const rows = Math.min(16, Math.max(1, (ov && ov.stackRows != null) ? ov.stackRows : 1));
+        const perCol = Math.ceil(n / rows);
         const stackBudgetH = 0.94;
         const gapRatio = 1.15;
-        const faceH = stackBudgetH / (n + gapRatio * (n - 1));
+        const faceH = stackBudgetH / (perCol + gapRatio * Math.max(0, perCol - 1));
         const gap = faceH * gapRatio;
         const faceW = faceH * (FULL_2X6_W / STRUT_H);
         const faceL = Math.min(faceW * (RAW_STOCK_LEN / FULL_2X6_W), 0.70);
@@ -2642,8 +2695,8 @@ import * as THREE from 'three';
         stackMat.emissive = new THREE.Color(0x2a1808);
         stackMat.emissiveIntensity = 0.22;
         const stackBaseY = 0.01;
-        const stackTopY = stackBaseY + n * faceH + (n - 1) * gap;
-        return buildRipOutput({ faceH, gap, faceL, yaw, stackMat, stackBaseY, stackTopY });
+        const stackTopY = stackBaseY + perCol * faceH + Math.max(0, perCol - 1) * gap;
+        return buildRipOutput({ faceH, gap, faceL, yaw, stackMat, stackBaseY, stackTopY, stackCount: n, stackRows: rows });
       }
       if (key === 'optional-finish') {
         [-0.15, 0.15].forEach((x, i) => {
@@ -2770,33 +2823,54 @@ import * as THREE from 'three';
       graphHold.clear();
     }
 
+    function makeOverrideLabel(text, pos) {
+      const el = document.createElement('div');
+      el.textContent = text;
+      const cs = getComputedStyle(document.documentElement);
+      const bg = (cs.getPropertyValue('--label-bg') || '#1c2028ee').trim();
+      const fg = (cs.getPropertyValue('--label-fg') || '#fff8e7').trim();
+      const bd = (cs.getPropertyValue('--label-border') || '#f5c518').trim();
+      el.style.cssText = `background:${bg};color:${fg};padding:4px 8px;border-radius:0;font:12px/1.35 system-ui,sans-serif;font-weight:600;white-space:nowrap;border:1px solid ${bd};box-shadow:0 1px 4px #0008`;
+      const obj = new CSS2DObject(el);
+      obj.position.copy(pos);
+      return obj;
+    }
+
     function applyOverrideVisuals(root, ov) {
       if (!root || !ov) return;
+      // Authored × override.scale on the graph node root. fitIsoCamera divides
+      // root.scale back out of framing so this is visibly larger/smaller.
       if (ov.scale != null && Number.isFinite(ov.scale)) {
-        root.scale.setScalar(ov.scale);
+        const authored = (root.userData && root.userData.authoredScale) || 1;
+        root.scale.setScalar(authored * ov.scale);
       }
       if (ov.highlightColor) {
         const col = new THREE.Color(ov.highlightColor);
         root.traverse((obj) => {
-          if (obj.isMesh && obj.material && obj.material.color) {
-            const m = obj.material.clone();
-            m.color = col;
+          if (!obj.isMesh || !obj.material) return;
+          if (obj.userData && (obj.userData.isPad || obj.userData.isRim || obj.userData.isOutlineShell)) return;
+          const list = Array.isArray(obj.material) ? obj.material : [obj.material];
+          const next = list.map((mat) => {
+            if (!mat || !mat.isMeshStandardMaterial || !mat.color) return mat;
+            const m = mat.clone();
+            m.color.copy(col);
             if ('emissive' in m) {
-              m.emissive = col.clone().multiplyScalar(0.15);
-              m.emissiveIntensity = 0.35;
+              m.emissive.copy(col).multiplyScalar(0.28);
+              m.emissiveIntensity = 0.55;
             }
-            obj.material = m;
-          }
+            return m;
+          });
+          obj.material = Array.isArray(obj.material) ? next : next[0];
         });
       }
       if (Array.isArray(ov.labelTexts)) {
         ov.labelTexts.forEach((t, i) => {
-          root.add(makeLabel(t, new THREE.Vector3(0, 0.45 + i * 0.08, 0)));
+          root.add(makeOverrideLabel(t, new THREE.Vector3(0, 0.52 + i * 0.1, 0)));
         });
       }
-      if (ov.note) root.add(makeLabel(ov.note, new THREE.Vector3(0, -0.22, 0)));
-      if (ov.qtyLabel) root.add(makeLabel(`qty ${ov.qtyLabel}`, new THREE.Vector3(0.35, 0.4, 0)));
-      if (ov.dimsLabel) root.add(makeLabel(ov.dimsLabel, new THREE.Vector3(-0.35, 0.4, 0)));
+      if (ov.note) root.add(makeOverrideLabel(ov.note, new THREE.Vector3(0, -0.28, 0)));
+      if (ov.qtyLabel) root.add(makeOverrideLabel(`qty ${ov.qtyLabel}`, new THREE.Vector3(0.38, 0.48, 0)));
+      if (ov.dimsLabel) root.add(makeOverrideLabel(ov.dimsLabel, new THREE.Vector3(-0.38, 0.48, 0)));
     }
 
     function buildGraphNodeRoot(n) {
@@ -2811,9 +2885,10 @@ import * as THREE from 'three';
       } else {
         const prev = woodTarget;
         woodTarget = root;
-        buildMaterialKey(n.materialKey);
+        buildMaterialKey(n.materialKey, ov || {});
         woodTarget = prev;
       }
+      root.userData.authoredScale = 1;
       applyOverrideVisuals(root, ov);
       const callout = nodeCallout(n);
       const preview = captureRolePreview(root);
@@ -3859,6 +3934,26 @@ import * as THREE from 'three';
         if (!c) return null;
         lines = [c];
       }
+      const ov = getCurrentOverride(n.id, n.kind);
+      if (ov) {
+        if (ov.qtyLabel) {
+          const qi = lines.findIndex((l) => /^Qty:/i.test(l));
+          if (qi >= 0) lines[qi] = `Qty: ${ov.qtyLabel}`;
+          else lines.unshift(`Qty: ${ov.qtyLabel}`);
+        }
+        if (ov.dimsLabel) {
+          const di = lines.findIndex((l) => /^Dims:/i.test(l));
+          if (di >= 0) lines[di] = `Dims: ${ov.dimsLabel}`;
+          else lines.push(`Dims: ${ov.dimsLabel}`);
+        }
+        if (ov.note) {
+          const ni = lines.findIndex((l) => /^Note:/i.test(l));
+          if (ni >= 0) lines[ni] = `Note: ${ov.note}`;
+          else lines.push(`Note: ${ov.note}`);
+        }
+        if (ov.stackCount != null) lines.push(`Stack count: ${ov.stackCount}`);
+        if (ov.stackRows != null) lines.push(`Stack rows: ${ov.stackRows}`);
+      }
       return { title, nodeTitle: n.title, lines };
     }
 
@@ -3872,10 +3967,13 @@ import * as THREE from 'three';
       if (ov.note) bits.push(`Note: ${ov.note}`);
       if (ov.qtyLabel) bits.push(`Qty: ${ov.qtyLabel}`);
       if (ov.dimsLabel) bits.push(`Dims: ${ov.dimsLabel}`);
+      if (ov.stackCount != null) bits.push(`Stack: ${ov.stackCount}`);
+      if (ov.stackRows != null) bits.push(`Rows: ${ov.stackRows}`);
       if (ov.scale != null) bits.push(`Scale: ${ov.scale}`);
       if (ov.highlightColor) bits.push(`Color: ${ov.highlightColor}`);
       if (ov.miterDeg != null) bits.push(`Miter: ${ov.miterDeg}°`);
       if (ov.bevelDeg != null) bits.push(`Bevel: ${ov.bevelDeg}°`);
+      if (Array.isArray(ov.labelTexts) && ov.labelTexts.length) bits.push(`Labels: ${ov.labelTexts.join(', ')}`);
       if (!bits.length) return '';
       return `<div class="rme-override-tip">Edit overlay — ${bits.join(' · ')}</div>`;
     }
@@ -4243,7 +4341,12 @@ import * as THREE from 'three';
         }
         const key = overrideKey(n.id, n.kind);
         setOverrideCurrent(key, result.override);
+        // Full live rebuild (thumb + open modal scene). Re-present modal so
+        // CSS2D labels / camera framing refresh even if host was mid-frame.
         rebuildGraphNodeLive(n.id);
+        if (modalOpen && graphModalNodeId === n.id) {
+          openGraphNodeModal(n.id);
+        }
         setEditStatus(result.mock ? 'Applied (mock)' : 'Applied', 'ok');
       } catch (err) {
         setEditStatus('Apply failed', 'error');
