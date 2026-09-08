@@ -3121,9 +3121,244 @@ import * as THREE from 'three';
       return nodeById(graphModalNodeId);
     }
 
+    /**
+     * Structured shop geometry for Hex Edit (xAI context). Text/JSON only — no mesh/screenshot.
+     * Switches on materialKey / machineVisual / id; numbers from panel-specs.
+     */
+    function buildGeometryContext(n) {
+      const key = n.materialKey || null;
+      const mv = n.machineVisual || null;
+      const wood = '#c48a4a';
+      const accent = '#5b3a1e';
+      const jig = '#3d5c45';
+      const dewalt = '#f5c518';
+      const machineBlue = '#6b8caf';
+      const COLORS_WOOD = { wood, accent };
+      const COLORS_BEVEL = { wood, accent };
+      const COLORS_JIG = { wood, accent: jig };
+      const COLORS_TABLE = { wood, accent, machine: dewalt };
+      const COLORS_MITER = { wood, accent, machine: machineBlue };
+      const COLORS_HAND = { wood, accent: jig };
+      const COLORS_DRILL = { wood, accent, machine: machineBlue };
+
+      /** @type {Record<string, any>} */
+      let g = {
+        geometryBrief: 'Authored shop preview for this node. Use callout and dims when present.',
+        defaultColors: COLORS_WOOD,
+        parts: []
+      };
+
+      if (key === 'pdf-2x6') {
+        g = {
+          geometryBrief: `Stack of (${RAW_STOCK_QTY}) kiln-dried PDF 2×6 boards, ${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm. Rip these first on the table saw.`,
+          dimsMm: { height: STRUT_H, width: FULL_2X6_W, length: RAW_STOCK_LEN },
+          qty: RAW_STOCK_QTY,
+          stackCount: RAW_STOCK_QTY,
+          stackRows: 1,
+          defaultColors: COLORS_WOOD,
+          parts: ['PDF 2x6 board']
+        };
+      } else if (key === 'ripped-half') {
+        g = {
+          geometryBrief: `Two stacks of ripped halves: ${RAW_STOCK_QTY}×2 → ${RAW_STOCK_QTY * 2} pieces at ${STRUT_H}×${STOCK_W}×${RAW_STOCK_LEN} mm. Keep matched pairs.`,
+          dimsMm: { height: STRUT_H, width: STOCK_W, length: RAW_STOCK_LEN },
+          qty: `${RAW_STOCK_QTY} × 2`,
+          stackCount: RAW_STOCK_QTY,
+          stackRows: 2,
+          defaultColors: COLORS_WOOD,
+          parts: ['ripped half']
+        };
+      } else if (key === 'blank') {
+        g = {
+          geometryBrief: `${HEX.qty * 3} strut blanks (~${BLANK_LEN} mm) from ripped stock, section ${STOCK_W}×${STRUT_H} mm. One blank shown.`,
+          dimsMm: { height: STRUT_H, width: STOCK_W, length: BLANK_LEN },
+          qty: HEX.qty * 3,
+          defaultColors: COLORS_WOOD,
+          parts: ['ripped blank']
+        };
+      } else if (key === 'leftover') {
+        g = {
+          geometryBrief: `${RAW_STOCK_QTY * 2} leftover remnants after ${BLANKS_PER_RIPPED_HALF} blank cuts per half — same ${STOCK_W}×${STRUT_H} section × ~${BLANK_STOCK_LEFTOVER} mm.`,
+          dimsMm: { height: STRUT_H, width: STOCK_W, length: BLANK_STOCK_LEFTOVER },
+          qty: RAW_STOCK_QTY * 2,
+          defaultColors: COLORS_WOOD,
+          parts: ['leftover stock']
+        };
+      } else if (key === 'optional-finish') {
+        g = {
+          geometryBrief: `Optional stain on a matched pair of ripped halves (${STRUT_H}×${STOCK_W} mm section, full stock length).`,
+          dimsMm: { height: STRUT_H, width: STOCK_W, length: RAW_STOCK_LEN },
+          qty: 'matched pair',
+          defaultColors: COLORS_WOOD,
+          parts: ['stained half', 'matched pair']
+        };
+      } else if (key === 'beveled') {
+        g = {
+          geometryBrief: `Beveled strut template: finished face ${STRUT_H}×${STRUT_W} mm with ${BEVEL_DEG}° bevel out. Same blank count as stock (${HEX.qty * 3}).`,
+          dimsMm: { height: STRUT_H, width: STRUT_W, length: BLANK_LEN },
+          qty: HEX.qty * 3,
+          bevelDeg: BEVEL_DEG,
+          defaultColors: COLORS_BEVEL,
+          parts: ['beveled blank', 'bevel edge']
+        };
+      } else if (key === 'jig') {
+        g = {
+          geometryBrief: `Plywood layout jig: base marks ${HEX.c} mm apart; arcs at ${HEX.a} mm; apex at arc ∩.`,
+          dimsMm: { length: HEX.a, width: HEX.c, height: HEX.b },
+          qty: '',
+          defaultColors: COLORS_JIG,
+          parts: ['jig plywood', 'layout arcs']
+        };
+      } else if (key === 'jig-stops') {
+        g = {
+          geometryBrief: `Jig with backing stops and three strut lanes on the hex triangle (${HEX.a}/${HEX.b}/${HEX.c} mm).`,
+          dimsMm: { length: HEX.a, width: HEX.c, height: HEX.b },
+          qty: '',
+          defaultColors: COLORS_JIG,
+          parts: ['jig plywood', 'backing stops', 'strut lanes']
+        };
+      } else if (key === 'mitered-base') {
+        g = {
+          geometryBrief: `Base-lane strut with simple miters at ${HEX.base}° off 90° (bevel 0°). Batch ${HEX.qty * 2} base ends.`,
+          dimsMm: { height: STRUT_H, width: STRUT_W, length: HEX.c },
+          qty: HEX.qty * 2,
+          miterDeg: HEX.base,
+          bevelDeg: 0,
+          defaultColors: COLORS_BEVEL,
+          parts: ['mitered base strut', 'jig']
+        };
+      } else if (key === 'mitered-apex') {
+        g = {
+          geometryBrief: `Apex-lane struts with simple miters at ${HEX.apex}° off 90° (bevel 0°). Batch ${HEX.qty} apex ends.`,
+          dimsMm: { height: STRUT_H, width: STRUT_W, length: HEX.a },
+          qty: HEX.qty,
+          miterDeg: HEX.apex,
+          bevelDeg: 0,
+          defaultColors: COLORS_BEVEL,
+          parts: ['mitered apex strut', 'jig']
+        };
+      } else if (key === 'ears') {
+        g = {
+          geometryBrief: `Compound ear trim: keep lane miter (base ${HEX.base}° / apex ${HEX.apex}°) plus ${BEVEL_DEG}° bevel. ${HEX.qty * 3} struts.`,
+          dimsMm: { height: STRUT_H, width: STRUT_W, length: HEX.a },
+          qty: HEX.qty * 3,
+          miterDeg: HEX.apex,
+          bevelDeg: BEVEL_DEG,
+          defaultColors: COLORS_BEVEL,
+          parts: ['ear strut', 'compound ear', 'jig']
+        };
+      } else if (key === 'assembled') {
+        g = {
+          geometryBrief: `One assembled hex frame on the jig — sides ${HEX.a} / ${HEX.b} / ${HEX.c} mm with stops.`,
+          dimsMm: { length: HEX.a, width: HEX.c, height: HEX.b },
+          qty: 1,
+          defaultColors: COLORS_JIG,
+          parts: ['assembled frame', 'jig', 'backing stops']
+        };
+      } else if (key === 'done') {
+        g = {
+          geometryBrief: `Done: ${HEX.qty} hex panels (incl. windows). Frame sides ${HEX.a} / ${HEX.b} / ${HEX.c} mm.`,
+          dimsMm: { length: HEX.a, width: HEX.c, height: HEX.b },
+          qty: `${HEX.qty} hex panels`,
+          defaultColors: COLORS_JIG,
+          parts: ['finished hex panel', 'jig']
+        };
+      } else if (mv === 'tableRip') {
+        g = {
+          geometryBrief: `${TOOL_TABLE_SAW}: square rip PDF 2×6 (${STRUT_H}×${FULL_2X6_W} mm) in half → ${STRUT_H}×${STOCK_W} mm. Fence at half width; bevel 0°.`,
+          dimsMm: { height: STRUT_H, width: FULL_2X6_W, length: RAW_STOCK_LEN },
+          qty: RAW_STOCK_QTY,
+          bevelDeg: 0,
+          defaultColors: COLORS_TABLE,
+          parts: ['table saw', 'fence', 'blade', 'PDF 2x6 stock']
+        };
+      } else if (mv === 'miterCrosscut') {
+        g = {
+          geometryBrief: `${TOOL_MITER_SAW}: crosscut ripped halves to ~${BLANK_LEN} mm blanks. Square cut; miter 0° / bevel 0°.`,
+          dimsMm: { height: STRUT_H, width: STOCK_W, length: BLANK_LEN },
+          qty: HEX.qty * 3,
+          miterDeg: 0,
+          bevelDeg: 0,
+          defaultColors: COLORS_MITER,
+          parts: ['miter saw', 'fence', 'ripped stock', 'blank']
+        };
+      } else if (mv === 'tableBevel') {
+        g = {
+          geometryBrief: `${TOOL_TABLE_SAW}: bevel-rip ${BEVEL_DEG}° for finished face ${STRUT_H}×${STRUT_W} mm from ${STRUT_H}×${STOCK_W} blank.`,
+          dimsMm: { height: STRUT_H, width: STOCK_W, length: BLANK_LEN },
+          qty: HEX.qty * 3,
+          bevelDeg: BEVEL_DEG,
+          defaultColors: COLORS_TABLE,
+          parts: ['table saw', 'bevel scale', 'fence', 'blank']
+        };
+      } else if (mv === 'miterBase') {
+        g = {
+          geometryBrief: `${TOOL_MITER_SAW}: simple base miters at ${HEX.base}° off 90°, bevel 0°. Long-point to long-point.`,
+          dimsMm: { height: STRUT_H, width: STRUT_W, length: HEX.c },
+          qty: HEX.qty * 2,
+          miterDeg: HEX.base,
+          bevelDeg: 0,
+          defaultColors: COLORS_MITER,
+          parts: ['miter saw', 'base strut', 'stop block']
+        };
+      } else if (mv === 'miterApex') {
+        g = {
+          geometryBrief: `${TOOL_MITER_SAW}: simple apex miters at ${HEX.apex}° off 90°, bevel 0°. Do not trust the ~31.6° stop alone.`,
+          dimsMm: { height: STRUT_H, width: STRUT_W, length: HEX.a },
+          qty: HEX.qty,
+          miterDeg: HEX.apex,
+          bevelDeg: 0,
+          defaultColors: COLORS_MITER,
+          parts: ['miter saw', 'apex strut', 'stop block']
+        };
+      } else if (mv === 'miterCompound') {
+        g = {
+          geometryBrief: `${TOOL_MITER_SAW}: compound ear trim — lane miter (base ${HEX.base}° / apex ${HEX.apex}°) + ${BEVEL_DEG}° bevel. Dual bevel L/R.`,
+          dimsMm: { height: STRUT_H, width: STRUT_W, length: HEX.a },
+          qty: HEX.qty * 3,
+          miterDeg: HEX.apex,
+          bevelDeg: BEVEL_DEG,
+          defaultColors: COLORS_MITER,
+          parts: ['miter saw', 'compound ear', 'stop block']
+        };
+      } else if (mv === 'handLayout') {
+        g = {
+          geometryBrief: `Hand layout on plywood jig: mark base ${HEX.c} mm, swing arcs ${HEX.a} mm, mark apex at intersection. No saw.`,
+          dimsMm: { length: HEX.a, width: HEX.c, height: HEX.b },
+          defaultColors: COLORS_HAND,
+          parts: ['plywood jig', 'pencil marks', 'trammel']
+        };
+      } else if (mv === 'drill' || n.id === 'm-drill') {
+        g = {
+          geometryBrief: `Drill/driver assemble: fasten three struts on the jig into one hex frame (${HEX.a}/${HEX.b}/${HEX.c} mm).`,
+          dimsMm: { length: HEX.a, width: HEX.c, height: HEX.b },
+          qty: 1,
+          defaultColors: COLORS_DRILL,
+          parts: ['drill/driver', 'assembled frame', 'jig', 'screws']
+        };
+      } else if (n.kind === 'machine') {
+        g = {
+          geometryBrief: `Authored machine schematic (${mv || n.id || 'unknown'}). Overrides may change miter/bevel/scale/labels.`,
+          defaultColors: COLORS_MITER,
+          parts: ['machine']
+        };
+      } else {
+        g = {
+          geometryBrief: `Authored material preview (${key || n.id || 'unknown'}). Overrides may change scale/color/labels/qty/dims/note.`,
+          defaultColors: COLORS_WOOD,
+          parts: ['material']
+        };
+      }
+
+      // Drop empty qty so context stays tight
+      if (g.qty === '' || g.qty == null) delete g.qty;
+      return g;
+    }
+
     function buildEditContext(n) {
       const st = graphNodeState.get(n.id);
       const ov = getCurrentOverride(n.id, n.kind);
+      const geom = buildGeometryContext(n);
       return {
         nodeId: n.id,
         kind: n.kind,
@@ -3133,9 +3368,7 @@ import * as THREE from 'three';
         materialKey: n.materialKey || null,
         machineVisual: n.machineVisual || null,
         currentOverride: ov,
-        sceneBrief: n.kind === 'machine'
-          ? `Authored machine schematic (${n.machineVisual || 'unknown'}). Overrides may change miter/bevel/scale/labels.`
-          : `Authored material stack (${n.materialKey || 'unknown'}). Overrides may change scale/color/labels/qty/dims/note.`
+        ...geom
       };
     }
 

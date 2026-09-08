@@ -15,7 +15,9 @@ note, qtyLabel, dimsLabel (strings),
 labelTexts (string array),
 stackCount, stackRows, scale, miterDeg, bevelDeg (numbers),
 highlightColor (#rrggbb).
-Omit unknown keys. Keep strings short (shop English).`;
+Omit unknown keys. Keep strings short (shop English).
+
+Context JSON fields (geometryBrief, dimsMm, qty, stackCount, stackRows, bevelDeg, miterDeg, defaultColors, parts, callout, currentOverride) are authored ground truth for the current node. Return only allowlisted override keys. When the user asks about size, stack, color, or angles, use the numbers and colors from that context — do not invent dims.`;
 
 function corsHeaders(origin) {
   const allow = origin && (
