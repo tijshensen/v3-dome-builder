@@ -37,8 +37,10 @@ export const STOCK_W_IN = '2¾"';
 export const STRUT_W_IN = '1 5/16"';
 export const BEVEL_DEG = 6.5;
 export const BEVEL_RAD = (BEVEL_DEG * Math.PI) / 180;
-export const BLANK_LEN = 1219;   // ~4' handling blanks
-export const BLANK_LEN_IN = "4'-0\"";
+// Video order: cut to longest triangle side first (= HEX.a), then rip, then bevel.
+// Exact HEX.a — no handling-blank scrap margin beyond kerf in leftover formula.
+export const BLANK_LEN = 1155;   // = HEX.a (longest side)
+export const BLANK_LEN_IN = "3'-9 7/16\""; // = HEX.aIn
 export const FULL_2X6_W = 140;   // full 2×6 section before rip (~5½")
 export const FULL_2X6_W_IN = '5½"';
 /** Trillium PDF material list — raw dome-frame strut stock (kiln-dried 2×6) */
@@ -50,16 +52,16 @@ export const BLADE_KERF_MM = 2.5;
 export const BLADE_KERF_IN = '3/32"'; // ~2.5 mm
 
 /**
- * Reasoned leftover after n=3 blanks from one RAW_STOCK_LEN ripped half.
- * Assume 3 kerf cuts (each blank cut off remaining stock):
+ * Reasoned leftover after n=3 blanks from one RAW_STOCK_LEN full 2×6 board.
+ * Video order cut-first: 3 kerf cuts on full section (each blank cut off remaining stock):
  *   leftover = RAW_STOCK_LEN − 3×BLANK_LEN − 3×BLADE_KERF_MM
- *            = 4000 − 3657 − 7.5 = 335.5 mm
- * Crosscut sawdust / half (mm³) = BLADE_KERF_MM × STRUT_H × STOCK_W × 3
- * Optional rip sawdust / board (mm³) = BLADE_KERF_MM × STRUT_H × RAW_STOCK_LEN
+ *            = 4000 − 3465 − 7.5 = 527.5 mm
+ * Crosscut sawdust / board (mm³) = BLADE_KERF_MM × STRUT_H × FULL_2X6_W × 3
+ * Optional rip sawdust / blank (mm³) = BLADE_KERF_MM × STRUT_H × BLANK_LEN
  */
 export const BLANK_STOCK_LEFTOVER =
-  RAW_STOCK_LEN - 3 * BLANK_LEN - 3 * BLADE_KERF_MM; // 335.5 ≈ 1'-1 3/16"
-export const BLANK_STOCK_LEFTOVER_IN = "1'-1 3/16\"";
+  RAW_STOCK_LEN - 3 * BLANK_LEN - 3 * BLADE_KERF_MM; // 527.5 ≈ 1'-8 3/4"
+export const BLANK_STOCK_LEFTOVER_IN = "1'-8 3/4\"";
 
 /** Locked shop tools (Hex guide machine-setup panel) */
 export const TOOL_TABLE_SAW = 'DEWALT DWE7492 table saw';

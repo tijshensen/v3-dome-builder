@@ -613,6 +613,7 @@ import * as THREE from 'three';
       BEVEL_DEG,
       BEVEL_RAD,
       BLANK_LEN,
+      BLANK_LEN_IN,
       FULL_2X6_W,
       FULL_2X6_W_IN,
       RAW_STOCK_QTY,
@@ -620,6 +621,7 @@ import * as THREE from 'three';
       RAW_STOCK_LEN_IN,
       BLADE_KERF_MM,
       BLANK_STOCK_LEFTOVER,
+      BLANK_STOCK_LEFTOVER_IN,
       PLAN_IN,
       TOOL_TABLE_SAW,
       TOOL_MITER_SAW
@@ -628,17 +630,37 @@ import * as THREE from 'three';
     // Locked dims live in panel/panel-specs.js (single source of truth).
     const BEVEL = BEVEL_RAD;
 
+    /** Blanks per RAW_STOCK_LEN full 2×6 board (video cut-first). */
+    const BLANKS_PER_BOARD = 3;
+
     const STEPS = [
       {
         id: 0,
-        title: '1. Rip stock',
-        text: () => `First strut step: rip Trillium PDF stock (${RAW_STOCK_QTY}) ${fmt(STRUT_H)}×${fmt(FULL_2X6_W)}×${fmt(RAW_STOCK_LEN)} kiln-dried 2×6s in half on ${TOOL_TABLE_SAW} → ~${fmt(STRUT_H)} × ${fmt(STOCK_W)} (straighter than buying 2×3). Keep matched pairs.`,
+        title: '1. Cut blanks',
+        text: () => `Crosscut PDF 2×6 full stock to longest side ${fmt(BLANK_LEN)} (= HEX.a). Blade square — no bevel. Batch: ${RAW_STOCK_QTY} boards × ${BLANKS_PER_BOARD} = ${RAW_STOCK_QTY * BLANKS_PER_BOARD} blanks (panels need ${HEX.qty * 3}).`,
+        view: 'blanks',
+        machineVisual: 'miterCrosscut',
+        machineSetup: {
+          machines: () => `${TOOL_MITER_SAW} (prefer) · or hand saw`,
+          settings: () => [
+            `Crosscut PDF 2×6 (${fmt(STRUT_H)}×${fmt(FULL_2X6_W)}×${fmt(RAW_STOCK_LEN)}) to ${fmt(BLANK_LEN)} (= longest side)`,
+            'Blade square: miter 0° / bevel 0° — no compound',
+            'Use a stop block for repeat blank length',
+            `Batch: ${RAW_STOCK_QTY} × ${BLANKS_PER_BOARD} blanks from stock`,
+            blankStockLeftoverSetupLine()
+          ]
+        }
+      },
+      {
+        id: 1,
+        title: '2. Rip stock',
+        text: () => `Rip the ${fmt(BLANK_LEN)} blanks in half on ${TOOL_TABLE_SAW}: ${fmt(STRUT_H)}×${fmt(FULL_2X6_W)} → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}. Do not rip full 4 m first. Keep matched pairs.`,
         view: 'stock',
         machineVisual: 'tableRip',
         machineSetup: {
           machines: () => TOOL_TABLE_SAW,
           settings: () => [
-            `PDF stock: (${RAW_STOCK_QTY}) ${fmt(STRUT_H)}×${fmt(FULL_2X6_W)}×${fmt(RAW_STOCK_LEN)} kiln-dried — rip these first`,
+            `Rip blanks in half (not full ${fmt(RAW_STOCK_LEN)} boards first)`,
             'Blade square: 90° / 0° bevel (no tilt)',
             `Fence: half of 2×6 → ${fmt(STRUT_H)} × ${fmt(STOCK_W)}`,
             'Use a push stick; keep matched pairs',
@@ -647,25 +669,9 @@ import * as THREE from 'three';
         }
       },
       {
-        id: 1,
-        title: '2. Cut blanks',
-        text: () => `Crosscut strut blanks ~${fmt(BLANK_LEN)} from ripped halves (longest side ${fmt(HEX.a)}). Batch: ${HEX.qty} panels × 3 = ${HEX.qty * 3} blanks.`,
-        view: 'blanks',
-        machineVisual: 'miterCrosscut',
-        machineSetup: {
-          machines: () => `${TOOL_MITER_SAW} (prefer) · or hand saw`,
-          settings: () => [
-            `Prefer ${TOOL_MITER_SAW} for crosscutting ripped stock to ~${fmt(BLANK_LEN)}`,
-            'Use a stop block for repeat blank length on the miter saw',
-            'No bevel / no compound for this step',
-            'Leftover stock → see Leftover material node'
-          ]
-        }
-      },
-      {
         id: 2,
         title: '3. Optional finish',
-        text: () => `Optional: finish/stain flat faces before the bevel rip.`,
+        text: () => `Optional: finish/stain flat faces on ripped halves before the bevel rip.`,
         view: 'stock',
         machineVisual: 'none',
         machineSetup: {
@@ -797,10 +803,16 @@ import * as THREE from 'three';
     const NODE_H = 162;
 
     function halfDimsLabel() {
-      // After rip, halves keep full stock length (RAW_STOCK_LEN)
+      // After cut-then-rip: short halves at blank length (= HEX.a)
       return units === 'mm'
-        ? `${STRUT_H}×${STOCK_W}×${RAW_STOCK_LEN} mm`
-        : `${STRUT_H_IN} × ${STOCK_W_IN} × ${RAW_STOCK_LEN_IN}`;
+        ? `${STRUT_H}×${STOCK_W}×${BLANK_LEN} mm`
+        : `${STRUT_H_IN} × ${STOCK_W_IN} × ${BLANK_LEN_IN}`;
+    }
+    function blankFullDimsLabel() {
+      // Pre-rip blank: full 2×6 section × blank length
+      return units === 'mm'
+        ? `${STRUT_H}×${FULL_2X6_W}×${BLANK_LEN} mm`
+        : `${STRUT_H_IN} × ${FULL_2X6_W_IN} × ${BLANK_LEN_IN}`;
     }
     function stockDimsLabel() {
       return units === 'mm'
@@ -814,52 +826,53 @@ import * as THREE from 'three';
     /** Static topology + layout; callouts refreshed via nodeCallout(). */
     const GRAPH = {
       nodes: [
-        // strut spine
-        { id: 'pdf-2x6', kind: 'material', title: 'PDF 2×6', materialKey: 'pdf-2x6', stepId: 0, x: 24, y: 36 },
-        { id: 'm-tableRip', kind: 'machine', title: 'Rip stock', machineVisual: 'tableRip', stepId: 0, x: 200, y: 36 },
-        { id: 'ripped-half', kind: 'material', title: 'Ripped half', materialKey: 'ripped-half', stepId: 0, x: 376, y: 36 },
+        // video order spine: cut → rip → bevel (~240px pitch, no overlap)
+        { id: 'pdf-2x6', kind: 'material', title: 'PDF 2×6', materialKey: 'pdf-2x6', stepId: 0, x: 24, y: 40 },
+        { id: 'm-miterCrosscut', kind: 'machine', title: 'Cut blanks', machineVisual: 'miterCrosscut', stepId: 0, x: 264, y: 40 },
+        { id: 'blank', kind: 'material', title: 'Blank', materialKey: 'blank', stepId: 0, x: 504, y: 40 },
+        { id: 'leftover', kind: 'material', title: 'Leftover stock', materialKey: 'leftover', stepId: 0, x: 504, y: -200 },
 
-        // fan-out from ripped-half
-        { id: 'm-miterCrosscut', kind: 'machine', title: 'Cut blanks', machineVisual: 'miterCrosscut', stepId: 1, x: 560, y: 0 },
-        { id: 'optional-finish', kind: 'material', title: 'Optional finish', materialKey: 'optional-finish', stepId: 2, x: 560, y: 280 },
-        { id: 'm-tableBevel', kind: 'machine', title: 'Bevel rip', machineVisual: 'tableBevel', stepId: 4, x: 760, y: 280 },
+        { id: 'm-tableRip', kind: 'machine', title: 'Rip stock', machineVisual: 'tableRip', stepId: 1, x: 744, y: 40 },
+        { id: 'ripped-half', kind: 'material', title: 'Ripped half', materialKey: 'ripped-half', stepId: 1, x: 984, y: 40 },
 
-        { id: 'blank', kind: 'material', title: 'Blank', materialKey: 'blank', stepId: 1, x: 760, y: 0 },
-        { id: 'leftover', kind: 'material', title: 'Leftover stock', materialKey: 'leftover', stepId: 1, x: 760, y: -280 },
-        { id: 'beveled', kind: 'material', title: 'Beveled', materialKey: 'beveled', stepId: 4, x: 940, y: 140 },
+        // fan-out from ripped-half: optional finish + bevel
+        { id: 'optional-finish', kind: 'material', title: 'Optional finish', materialKey: 'optional-finish', stepId: 2, x: 984, y: 280 },
+        { id: 'm-tableBevel', kind: 'machine', title: 'Bevel rip', machineVisual: 'tableBevel', stepId: 4, x: 1224, y: 160 },
+        { id: 'beveled', kind: 'material', title: 'Beveled', materialKey: 'beveled', stepId: 4, x: 1464, y: 160 },
 
         // fan-out: Initial miters · base vs apex lanes
-        { id: 'm-miterBase', kind: 'machine', title: 'Initial miters · base', machineVisual: 'miterBase', stepId: 6, x: 1120, y: 0 },
-        { id: 'm-miterApex', kind: 'machine', title: 'Initial miters · apex', machineVisual: 'miterApex', stepId: 7, x: 1120, y: 280 },
-        { id: 'mitered-base', kind: 'material', title: 'Mitered base', materialKey: 'mitered-base', stepId: 6, x: 1300, y: 0 },
-        { id: 'mitered-apex', kind: 'material', title: 'Mitered apex', materialKey: 'mitered-apex', stepId: 7, x: 1300, y: 280 },
+        { id: 'm-miterBase', kind: 'machine', title: 'Initial miters · base', machineVisual: 'miterBase', stepId: 6, x: 1704, y: 40 },
+        { id: 'm-miterApex', kind: 'machine', title: 'Initial miters · apex', machineVisual: 'miterApex', stepId: 7, x: 1704, y: 280 },
+        { id: 'mitered-base', kind: 'material', title: 'Mitered base', materialKey: 'mitered-base', stepId: 6, x: 1944, y: 40 },
+        { id: 'mitered-apex', kind: 'material', title: 'Mitered apex', materialKey: 'mitered-apex', stepId: 7, x: 1944, y: 280 },
 
         // fan-in: one compound ears from both mitered lanes
-        { id: 'm-miterCompound', kind: 'machine', title: 'Compound ears', machineVisual: 'miterCompound', stepId: 8, x: 1520, y: 140 },
-        { id: 'ears', kind: 'material', title: 'Ears', materialKey: 'ears', stepId: 8, x: 1700, y: 140 },
+        { id: 'm-miterCompound', kind: 'machine', title: 'Compound ears', machineVisual: 'miterCompound', stepId: 8, x: 2184, y: 160 },
+        { id: 'ears', kind: 'material', title: 'Ears', materialKey: 'ears', stepId: 8, x: 2424, y: 160 },
 
         // parallel jig lane
-        { id: 'jig', kind: 'material', title: 'Jig', materialKey: 'jig', stepId: 3, x: 560, y: 560 },
-        { id: 'm-handLayout', kind: 'machine', title: 'Lay out jig', machineVisual: 'handLayout', stepId: 3, x: 376, y: 560 },
-        { id: 'jig-stops', kind: 'material', title: 'Jig + stops', materialKey: 'jig-stops', stepId: 5, x: 760, y: 560 },
+        { id: 'm-handLayout', kind: 'machine', title: 'Lay out jig', machineVisual: 'handLayout', stepId: 3, x: 744, y: 520 },
+        { id: 'jig', kind: 'material', title: 'Jig', materialKey: 'jig', stepId: 3, x: 984, y: 520 },
+        { id: 'jig-stops', kind: 'material', title: 'Jig + stops', materialKey: 'jig-stops', stepId: 5, x: 1224, y: 520 },
 
         // assemble fan-in
-        { id: 'm-drill', kind: 'machine', title: 'Assemble', machineVisual: 'drill', stepId: 9, x: 1880, y: 220 },
-        { id: 'assembled', kind: 'material', title: 'Assembled', materialKey: 'assembled', stepId: 9, x: 2060, y: 220 },
-        { id: 'done', kind: 'material', title: 'Done', materialKey: 'done', stepId: 10, x: 2240, y: 220 }
+        { id: 'm-drill', kind: 'machine', title: 'Assemble', machineVisual: 'drill', stepId: 9, x: 2664, y: 240 },
+        { id: 'assembled', kind: 'material', title: 'Assembled', materialKey: 'assembled', stepId: 9, x: 2904, y: 240 },
+        { id: 'done', kind: 'material', title: 'Done', materialKey: 'done', stepId: 10, x: 3144, y: 240 }
       ],
       edges: [
-        { from: 'pdf-2x6', to: 'm-tableRip' },
-        { from: 'm-tableRip', to: 'ripped-half' },
-
-        // fan-out: ripped-half → Cut blanks AND Optional finish AND bevel path
-        { from: 'ripped-half', to: 'm-miterCrosscut', fan: true },
-        { from: 'ripped-half', to: 'optional-finish', fan: true },
-        { from: 'ripped-half', to: 'm-tableBevel', fan: true },
-
+        // cut-first: PDF → crosscut → blank + leftover
+        { from: 'pdf-2x6', to: 'm-miterCrosscut' },
         { from: 'm-miterCrosscut', to: 'blank', fan: true },
         { from: 'm-miterCrosscut', to: 'leftover', fan: true },
-        { from: 'blank', to: 'm-tableBevel' },
+
+        // then rip blanks in half
+        { from: 'blank', to: 'm-tableRip' },
+        { from: 'm-tableRip', to: 'ripped-half' },
+
+        // fan-out: ripped-half → optional finish AND bevel
+        { from: 'ripped-half', to: 'optional-finish', fan: true },
+        { from: 'ripped-half', to: 'm-tableBevel', fan: true },
         { from: 'optional-finish', to: 'm-tableBevel' },
         { from: 'm-tableBevel', to: 'beveled' },
 
@@ -900,18 +913,24 @@ import * as THREE from 'three';
         return { qty: `(${RAW_STOCK_QTY})`, dims: stockDimsLabel(), note: '' };
       }
       if (k === 'ripped-half') {
-        return { qty: `${RAW_STOCK_QTY} × 2`, dims: halfDimsLabel(), note: '' };
+        // 96 blanks × 2 halves = 192 (PDF-honest stock yield)
+        return { qty: String(RAW_STOCK_QTY * BLANKS_PER_BOARD * 2), dims: halfDimsLabel(), note: 'short halves' };
       }
       if (k === 'optional-finish') {
         return { qty: 'matched pair', dims: halfDimsLabel(), note: '' };
       }
       if (k === 'blank') {
-        return { qty: String(HEX.qty * 3), dims: blankWhlLabel(), note: '' };
+        // Pre-rip full 2×6 × BLANK_LEN; stock-derived 32×3=96
+        return {
+          qty: String(RAW_STOCK_QTY * BLANKS_PER_BOARD),
+          dims: blankWhlLabel(),
+          note: `panels need ${HEX.qty * 3}`
+        };
       }
       if (k === 'leftover') {
-        // One remnant per ripped half after 3 blank cuts (kerf math in panel-specs)
+        // One remnant per full 2×6 board after 3 blank cuts (kerf math in panel-specs)
         return {
-          qty: `${RAW_STOCK_QTY * 2}`,
+          qty: String(RAW_STOCK_QTY),
           dims: leftoverWhlLabel(),
           note: leftoverSawdustNote()
         };
@@ -1428,54 +1447,55 @@ import * as THREE from 'three';
 
     /** Active-unit blank cross-section × length (w × h × l) from panel-specs */
     function blankWhlLabel() {
-      // After rip-first: w = ripped half face, h = thickness, l = blank length
-      const w = fmt(STOCK_W);
+      // Video cut-first: full 2×6 section × blank length (= HEX.a)
+      const w = fmt(FULL_2X6_W);
       const h = fmt(STRUT_H);
       const l = fmt(BLANK_LEN);
-      return `${w} × ${h} × ~${l}`;
+      return `${w} × ${h} × ${l}`;
     }
-    /** Leftover remnant: same ripped/blank cross-section × leftover length after kerf. */
+    /** Leftover remnant: full 2×6 section × leftover length after kerf. */
     function leftoverWhlLabel() {
-      const w = fmt(STOCK_W);
+      const w = fmt(FULL_2X6_W);
       const h = fmt(STRUT_H);
       const l = fmt(blankStockLeftoverMm());
       return `${w} × ${h} × ~${l}`;
     }
     /** Sawdust note for Leftover material node (not machine callout). */
     function leftoverSawdustNote() {
-      return `sawdust ~${fmtVol(blankCrosscutSawdustMm3())}/half (−${BLANKS_PER_RIPPED_HALF}×${fmt(BLADE_KERF_MM)} kerf)`;
+      return `sawdust ~${fmtVol(blankCrosscutSawdustMm3())}/board (−${BLANKS_PER_BOARD}×${fmt(BLADE_KERF_MM)} kerf)`;
     }
 
     /**
-     * Reasoned blanks per ripped half from one RAW_STOCK_LEN board.
+     * Blanks per board already declared near STEPS (BLANKS_PER_BOARD).
      * n=3 blanks; assume 3 kerf cuts (each blank cut off remaining stock).
      */
-    const BLANKS_PER_RIPPED_HALF = 3;
+    /** @deprecated alias — same as BLANKS_PER_BOARD after cut-first reorder */
+    const BLANKS_PER_RIPPED_HALF = BLANKS_PER_BOARD;
 
     /**
      * Leftover length after kerf:
      *   RAW_STOCK_LEN − n×BLANK_LEN − n×BLADE_KERF_MM
-     *   = 4000 − 3657 − 7.5 = 335.5 mm (BLANK_STOCK_LEFTOVER in panel-specs).
+     *   = 4000 − 3465 − 7.5 = 527.5 mm (BLANK_STOCK_LEFTOVER in panel-specs).
      */
     function blankStockLeftoverMm() {
       return BLANK_STOCK_LEFTOVER;
     }
 
     /**
-     * Crosscut sawdust volume per ripped half (mm³):
-     *   BLADE_KERF_MM × STRUT_H × STOCK_W × n
-     * Show as cm³ (mm mode) or in³ (inches mode) via fmtVol.
+     * Crosscut sawdust volume per full 2×6 board (mm³):
+     *   BLADE_KERF_MM × STRUT_H × FULL_2X6_W × n
+     * (kerf on full section before rip — video cut-first)
      */
     function blankCrosscutSawdustMm3() {
-      return BLADE_KERF_MM * STRUT_H * STOCK_W * BLANKS_PER_RIPPED_HALF;
+      return BLADE_KERF_MM * STRUT_H * FULL_2X6_W * BLANKS_PER_BOARD;
     }
 
     /**
-     * Optional rip tip — sawdust per board from one length rip (mm³):
-     *   BLADE_KERF_MM × STRUT_H × RAW_STOCK_LEN
+     * Rip tip — sawdust per blank from one length rip (mm³):
+     *   BLADE_KERF_MM × STRUT_H × BLANK_LEN
      */
     function ripSawdustMm3() {
-      return BLADE_KERF_MM * STRUT_H * RAW_STOCK_LEN;
+      return BLADE_KERF_MM * STRUT_H * BLANK_LEN;
     }
 
     /** Volume: mm³ → cm³ (metric UI) or in³ (imperial UI). Unit-pure; no dual strings. */
@@ -1490,17 +1510,17 @@ import * as THREE from 'three';
 
     /** Muted Qty/Dims-style tip — leftover after kerf + sawdust; unit-pure via fmt/fmtVol. */
     function blankStockLeftoverNote() {
-      return `leftover ~${fmt(blankStockLeftoverMm())} after ${BLANKS_PER_RIPPED_HALF}× blanks (−${BLANKS_PER_RIPPED_HALF}×${fmt(BLADE_KERF_MM)} kerf) · sawdust ~${fmtVol(blankCrosscutSawdustMm3())}`;
+      return `leftover ~${fmt(blankStockLeftoverMm())} after ${BLANKS_PER_BOARD}× blanks (−${BLANKS_PER_BOARD}×${fmt(BLADE_KERF_MM)} kerf) · sawdust ~${fmtVol(blankCrosscutSawdustMm3())}`;
     }
 
-    /** Cut blanks machineSetup — reasoned leftover after kerf + crosscut sawdust / half. */
+    /** Cut blanks machineSetup — reasoned leftover after kerf + crosscut sawdust / board. */
     function blankStockLeftoverSetupLine() {
-      return `~${BLANKS_PER_RIPPED_HALF} blanks per ripped half from ${fmt(RAW_STOCK_LEN)} → leftover ~${fmt(blankStockLeftoverMm())} (RAW−${BLANKS_PER_RIPPED_HALF}×BLANK−${BLANKS_PER_RIPPED_HALF}×kerf) · crosscut sawdust ~${fmtVol(blankCrosscutSawdustMm3())}/half`;
+      return `${BLANKS_PER_BOARD} blanks/board from ${fmt(RAW_STOCK_LEN)} → leftover ~${fmt(blankStockLeftoverMm())} (RAW−${BLANKS_PER_BOARD}×BLANK−${BLANKS_PER_BOARD}×kerf) · crosscut sawdust ~${fmtVol(blankCrosscutSawdustMm3())}/board (full 2×6 section)`;
     }
 
-    /** Cheap Rip stock tip — one rip through length. */
+    /** Cheap Rip stock tip — one rip through blank length. */
     function ripSawdustTipLine() {
-      return `Tip: rip sawdust ~${fmtVol(ripSawdustMm3())}/board (${fmt(BLADE_KERF_MM)} × ${fmt(STRUT_H)} × ${fmt(RAW_STOCK_LEN)})`;
+      return `Tip: rip sawdust ~${fmtVol(ripSawdustMm3())}/blank (${fmt(BLADE_KERF_MM)} × ${fmt(STRUT_H)} × ${fmt(BLANK_LEN)})`;
     }
 
     function strutMesh(lengthMm, faceWmm = STRUT_W, mat = woodMat) {
@@ -1874,7 +1894,7 @@ import * as THREE from 'three';
           miterDeg: o.miterDeg != null ? o.miterDeg : 0,
           bevelDeg: o.bevelDeg != null ? o.bevelDeg : 0,
           stop: true,
-          label: `crosscut ~${fmt(BLANK_LEN)}`
+          label: `crosscut ${fmt(BLANK_LEN)}`
         });
       } else if (kind === 'miterBase') {
         addMiterSawSchematic({
@@ -2081,7 +2101,7 @@ import * as THREE from 'three';
       if (key === 'optional-finish') {
         [-0.15, 0.15].forEach((x, i) => {
           const half = new THREE.Mesh(
-            new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 1.0),
+            new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, BLANK_LEN / 1000),
             stainMat
           );
           half.position.set(x, STRUT_H / 2000, 0);
@@ -2092,27 +2112,27 @@ import * as THREE from 'three';
       }
       if (key === 'blank') {
         addMaterialsPad(1.15, 1.0);
-        const blank = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.18, 0.32), woodMat);
+        const blank = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.18, 0.42), woodMat);
         blank.position.set(0.05, 0.11, 0);
         woodTarget.add(blank);
         addDarkOutline(blank);
-        const blankQty = HEX.qty * 3;
-        woodTarget.add(makeLabel(`ripped blank  w × h × l`, new THREE.Vector3(0.05, 0.42, 0)));
+        const blankQty = RAW_STOCK_QTY * BLANKS_PER_BOARD;
+        woodTarget.add(makeLabel(`full 2×6 blank  w × h × l`, new THREE.Vector3(0.05, 0.42, 0)));
         woodTarget.add(makeLabel(blankWhlLabel(), new THREE.Vector3(0.05, 0.32, 0)));
-        woodTarget.add(makeLabel(`1 of ${blankQty} shown  (${HEX.qty} panels × 3)`, new THREE.Vector3(0.05, -0.08, 0)));
+        woodTarget.add(makeLabel(`1 of ${blankQty} shown  (panels need ${HEX.qty * 3})`, new THREE.Vector3(0.05, -0.08, 0)));
         return `${blankQty} · ${blankWhlLabel()}`;
       }
       if (key === 'leftover') {
         addMaterialsPad(1.0, 0.85);
-        // Short remnant — same section as blank stock, shorter length visual
-        const rem = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, 0.28), woodMat);
+        // Short remnant — full 2×6 section after blanking cuts
+        const rem = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.16, 0.28), woodMat);
         rem.position.set(0, 0.1, 0);
         woodTarget.add(rem);
         addDarkOutline(rem);
         woodTarget.add(makeLabel('leftover stock', new THREE.Vector3(0, 0.38, 0)));
         woodTarget.add(makeLabel(leftoverWhlLabel(), new THREE.Vector3(0, 0.28, 0)));
         woodTarget.add(makeLabel(leftoverSawdustNote(), new THREE.Vector3(0, -0.08, 0)));
-        return `${RAW_STOCK_QTY * 2} · ${leftoverWhlLabel()}`;
+        return `${RAW_STOCK_QTY} · ${leftoverWhlLabel()}`;
       }
       if (key === 'beveled') {
         addMaterialsPad(1.1, 0.9);
@@ -2562,17 +2582,36 @@ import * as THREE from 'three';
       let showOutput = true;
 
       if (view === 'stock' && mv === 'tableRip') {
-        const shared = buildRipMaterials();
-        matCall = shared.callout;
+        // Materials: full-width blank; Output: ripped halves (video cut-then-rip)
+        addMaterialsPad(1.15, 1.0);
+        const blankIn = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.18, 0.42), woodMat);
+        blankIn.position.set(0.05, 0.11, 0);
+        woodTarget.add(blankIn);
+        addDarkOutline(blankIn);
+        const blankQty = RAW_STOCK_QTY * BLANKS_PER_BOARD;
+        woodTarget.add(makeLabel(`blank ${blankWhlLabel()}`, new THREE.Vector3(0.05, 0.38, 0)));
+        matCall = `${blankQty} · ${blankWhlLabel()}`;
+
         woodTarget = outputRoot;
-        outCall = buildRipOutput(shared);
+        addMaterialsPad(1.0, 0.9);
+        [-0.16, 0.16].forEach((x, i) => {
+          const half = new THREE.Mesh(
+            new THREE.BoxGeometry(STOCK_W / 1000 * 8, STRUT_H / 1000 * 6, 0.55),
+            woodMat
+          );
+          half.position.set(x, 0.1, 0);
+          woodTarget.add(half);
+          addDarkOutline(half);
+          woodTarget.add(makeLabel(i === 0 ? halfDimsLabel() : 'matched pair', new THREE.Vector3(x, 0.32, 0)));
+        });
+        outCall = `${blankQty * 2} · ${halfDimsLabel()}`;
       } else if (view === 'stock' && mv === 'none') {
-        // Optional finish — Output-focused stained matched pairs
+        // Optional finish — Output-focused stained matched pairs (short halves)
         showMaterials = false;
         woodTarget = outputRoot;
         [-0.15, 0.15].forEach((x, i) => {
           const half = new THREE.Mesh(
-            new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, 1.0),
+            new THREE.BoxGeometry(STOCK_W / 1000, STRUT_H / 1000, BLANK_LEN / 1000),
             stainMat
           );
           half.position.set(x, STRUT_H / 2000, 0);
@@ -2581,26 +2620,25 @@ import * as THREE from 'three';
         });
         outCall = `matched pair · ${halfDimsLabel()}`;
       } else if (view === 'blanks') {
-        // Materials: ripped half stock cue
+        // Materials: PDF full 2×6; Output: cut blank at HEX.a
         addMaterialsPad(1.0, 0.9);
-        const halfIn = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.14, 0.28), woodMat);
-        halfIn.position.set(0, 0.09, 0);
-        woodTarget.add(halfIn);
-        addDarkOutline(halfIn);
-        const halfLbl = halfDimsLabel();
-        woodTarget.add(makeLabel(`ripped half ${halfLbl}`, new THREE.Vector3(0, 0.28, 0)));
-        matCall = `input · ${halfLbl}`;
+        const stockIn = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.14, 0.36), woodMat);
+        stockIn.position.set(0, 0.09, 0);
+        woodTarget.add(stockIn);
+        addDarkOutline(stockIn);
+        woodTarget.add(makeLabel(`PDF 2×6 ${stockDimsLabel()}`, new THREE.Vector3(0, 0.28, 0)));
+        matCall = `input · ${stockDimsLabel()}`;
 
         woodTarget = outputRoot;
         addMaterialsPad(1.15, 1.0);
-        const blank = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.18, 0.32), woodMat);
+        const blank = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.18, 0.42), woodMat);
         blank.position.set(0.05, 0.11, 0);
         woodTarget.add(blank);
         addDarkOutline(blank);
-        const blankQty = HEX.qty * 3;
-        woodTarget.add(makeLabel(`ripped blank  w × h × l`, new THREE.Vector3(0.05, 0.42, 0)));
+        const blankQty = RAW_STOCK_QTY * BLANKS_PER_BOARD;
+        woodTarget.add(makeLabel(`full 2×6 blank  w × h × l`, new THREE.Vector3(0.05, 0.42, 0)));
         woodTarget.add(makeLabel(blankWhlLabel(), new THREE.Vector3(0.05, 0.32, 0)));
-        woodTarget.add(makeLabel(`1 of ${blankQty} shown  (${HEX.qty} panels × 3)`, new THREE.Vector3(0.05, -0.08, 0)));
+        woodTarget.add(makeLabel(`1 of ${blankQty} shown  (panels need ${HEX.qty * 3})`, new THREE.Vector3(0.05, -0.08, 0)));
         outCall = `${blankQty} · ${blankWhlLabel()}`;
       } else if (view === 'bevel') {
         const halfLbl = halfDimsLabel();
@@ -2919,7 +2957,7 @@ import * as THREE from 'three';
         `Hex ×${HEX.qty} including 4 windows`,
         `Sides: ${fmt(HEX.a)} / ${fmt(HEX.b)} / base ${fmt(HEX.c)}`,
         `Miters off 90°: apex ${HEX.apex}° · bases ${HEX.base}° / ${HEX.base}°`,
-        `Stock: PDF (${RAW_STOCK_QTY}) 2×6 ×${fmt(RAW_STOCK_LEN)} → rip ${fmt(STRUT_H)} × ${fmt(STOCK_W)} · bevel ${BEVEL_DEG}° → finished ${fmt(STRUT_H)} × ${fmt(STRUT_W)}`
+        `Stock: PDF (${RAW_STOCK_QTY}) 2×6 ×${fmt(RAW_STOCK_LEN)} → cut ${fmt(BLANK_LEN)} → rip ${fmt(STRUT_H)} × ${fmt(STOCK_W)} · bevel ${BEVEL_DEG}° → finished ${fmt(STRUT_H)} × ${fmt(STRUT_W)}`
       ].join('\n');
     }
 
@@ -2952,9 +2990,9 @@ import * as THREE from 'three';
         ];
       } else if (k === 'ripped-half') {
         lines = [
-          `Qty: ${RAW_STOCK_QTY} × 2`,
+          `Qty: ${RAW_STOCK_QTY * BLANKS_PER_BOARD * 2}`,
           `Dims: ${halfDimsLabel()}`,
-          'Matched pairs after rip'
+          'Short halves after rip of blanks · matched pairs'
         ];
       } else if (k === 'optional-finish') {
         lines = [
@@ -2963,16 +3001,16 @@ import * as THREE from 'three';
         ];
       } else if (k === 'blank') {
         lines = [
-          `Qty: ${HEX.qty * 3}`,
+          `Qty: ${RAW_STOCK_QTY * BLANKS_PER_BOARD}`,
           `Dims: ${blankWhlLabel()}`,
-          `${HEX.qty} panels × 3`
+          `Full 2×6 × ${fmt(BLANK_LEN)} · panels need ${HEX.qty * 3}`
         ];
       } else if (k === 'leftover') {
         lines = [
-          `Qty: ${RAW_STOCK_QTY * 2}`,
+          `Qty: ${RAW_STOCK_QTY}`,
           `Dims: ${leftoverWhlLabel()}`,
           `Note: ${leftoverSawdustNote()}`,
-          `After ${BLANKS_PER_RIPPED_HALF}× blanks / ripped half (RAW−n×BLANK−n×kerf)`
+          `After ${BLANKS_PER_BOARD}× blanks / board (RAW−n×BLANK−n×kerf)`
         ];
       } else if (k === 'beveled') {
         lines = [
@@ -3150,7 +3188,7 @@ import * as THREE from 'three';
 
       if (key === 'pdf-2x6') {
         g = {
-          geometryBrief: `Stack of (${RAW_STOCK_QTY}) kiln-dried PDF 2×6 boards, ${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm. Rip these first on the table saw.`,
+          geometryBrief: `Stack of (${RAW_STOCK_QTY}) kiln-dried PDF 2×6 boards, ${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm. Cut blanks to ${BLANK_LEN} mm (= HEX.a) first.`,
           dimsMm: { height: STRUT_H, width: FULL_2X6_W, length: RAW_STOCK_LEN },
           qty: RAW_STOCK_QTY,
           stackCount: RAW_STOCK_QTY,
@@ -3160,34 +3198,34 @@ import * as THREE from 'three';
         };
       } else if (key === 'ripped-half') {
         g = {
-          geometryBrief: `Two stacks of ripped halves: ${RAW_STOCK_QTY}×2 → ${RAW_STOCK_QTY * 2} pieces at ${STRUT_H}×${STOCK_W}×${RAW_STOCK_LEN} mm. Keep matched pairs.`,
-          dimsMm: { height: STRUT_H, width: STOCK_W, length: RAW_STOCK_LEN },
-          qty: `${RAW_STOCK_QTY} × 2`,
-          stackCount: RAW_STOCK_QTY,
+          geometryBrief: `Short ripped halves: ${RAW_STOCK_QTY * BLANKS_PER_BOARD} blanks × 2 → ${RAW_STOCK_QTY * BLANKS_PER_BOARD * 2} pieces at ${STRUT_H}×${STOCK_W}×${BLANK_LEN} mm. Keep matched pairs.`,
+          dimsMm: { height: STRUT_H, width: STOCK_W, length: BLANK_LEN },
+          qty: RAW_STOCK_QTY * BLANKS_PER_BOARD * 2,
+          stackCount: Math.min(RAW_STOCK_QTY, 16),
           stackRows: 2,
           defaultColors: COLORS_WOOD,
           parts: ['ripped half']
         };
       } else if (key === 'blank') {
         g = {
-          geometryBrief: `${HEX.qty * 3} strut blanks (~${BLANK_LEN} mm) from ripped stock, section ${STOCK_W}×${STRUT_H} mm. One blank shown.`,
-          dimsMm: { height: STRUT_H, width: STOCK_W, length: BLANK_LEN },
-          qty: HEX.qty * 3,
+          geometryBrief: `${RAW_STOCK_QTY * BLANKS_PER_BOARD} full-width blanks (${BLANK_LEN} mm = HEX.a) from PDF 2×6, section ${FULL_2X6_W}×${STRUT_H} mm before rip. Panels need ${HEX.qty * 3}.`,
+          dimsMm: { height: STRUT_H, width: FULL_2X6_W, length: BLANK_LEN },
+          qty: RAW_STOCK_QTY * BLANKS_PER_BOARD,
           defaultColors: COLORS_WOOD,
-          parts: ['ripped blank']
+          parts: ['full 2x6 blank']
         };
       } else if (key === 'leftover') {
         g = {
-          geometryBrief: `${RAW_STOCK_QTY * 2} leftover remnants after ${BLANKS_PER_RIPPED_HALF} blank cuts per half — same ${STOCK_W}×${STRUT_H} section × ~${BLANK_STOCK_LEFTOVER} mm.`,
-          dimsMm: { height: STRUT_H, width: STOCK_W, length: BLANK_STOCK_LEFTOVER },
-          qty: RAW_STOCK_QTY * 2,
+          geometryBrief: `${RAW_STOCK_QTY} leftover remnants after ${BLANKS_PER_BOARD} blank cuts per board — full ${FULL_2X6_W}×${STRUT_H} section × ~${BLANK_STOCK_LEFTOVER} mm.`,
+          dimsMm: { height: STRUT_H, width: FULL_2X6_W, length: BLANK_STOCK_LEFTOVER },
+          qty: RAW_STOCK_QTY,
           defaultColors: COLORS_WOOD,
           parts: ['leftover stock']
         };
       } else if (key === 'optional-finish') {
         g = {
-          geometryBrief: `Optional stain on a matched pair of ripped halves (${STRUT_H}×${STOCK_W} mm section, full stock length).`,
-          dimsMm: { height: STRUT_H, width: STOCK_W, length: RAW_STOCK_LEN },
+          geometryBrief: `Optional stain on a matched pair of short ripped halves (${STRUT_H}×${STOCK_W}×${BLANK_LEN} mm) before bevel.`,
+          dimsMm: { height: STRUT_H, width: STOCK_W, length: BLANK_LEN },
           qty: 'matched pair',
           defaultColors: COLORS_WOOD,
           parts: ['stained half', 'matched pair']
@@ -3265,22 +3303,22 @@ import * as THREE from 'three';
         };
       } else if (mv === 'tableRip') {
         g = {
-          geometryBrief: `${TOOL_TABLE_SAW}: square rip PDF 2×6 (${STRUT_H}×${FULL_2X6_W} mm) in half → ${STRUT_H}×${STOCK_W} mm. Fence at half width; bevel 0°.`,
-          dimsMm: { height: STRUT_H, width: FULL_2X6_W, length: RAW_STOCK_LEN },
-          qty: RAW_STOCK_QTY,
+          geometryBrief: `${TOOL_TABLE_SAW}: square rip ${BLANK_LEN} mm blanks (${STRUT_H}×${FULL_2X6_W} mm) in half → ${STRUT_H}×${STOCK_W} mm. Fence at half width; bevel 0°. Not full 4 m first.`,
+          dimsMm: { height: STRUT_H, width: FULL_2X6_W, length: BLANK_LEN },
+          qty: RAW_STOCK_QTY * BLANKS_PER_BOARD,
           bevelDeg: 0,
           defaultColors: COLORS_TABLE,
-          parts: ['table saw', 'fence', 'blade', 'PDF 2x6 stock']
+          parts: ['table saw', 'fence', 'blade', 'full 2x6 blank']
         };
       } else if (mv === 'miterCrosscut') {
         g = {
-          geometryBrief: `${TOOL_MITER_SAW}: crosscut ripped halves to ~${BLANK_LEN} mm blanks. Square cut; miter 0° / bevel 0°.`,
-          dimsMm: { height: STRUT_H, width: STOCK_W, length: BLANK_LEN },
-          qty: HEX.qty * 3,
+          geometryBrief: `${TOOL_MITER_SAW}: crosscut PDF 2×6 to ${BLANK_LEN} mm (= HEX.a). Square cut on full section; miter 0° / bevel 0°.`,
+          dimsMm: { height: STRUT_H, width: FULL_2X6_W, length: BLANK_LEN },
+          qty: RAW_STOCK_QTY * BLANKS_PER_BOARD,
           miterDeg: 0,
           bevelDeg: 0,
           defaultColors: COLORS_MITER,
-          parts: ['miter saw', 'fence', 'ripped stock', 'blank']
+          parts: ['miter saw', 'fence', 'PDF 2x6 stock', 'blank']
         };
       } else if (mv === 'tableBevel') {
         g = {
