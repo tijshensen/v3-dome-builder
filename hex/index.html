@@ -94,10 +94,20 @@
     .ui-head h1 { flex: 1 1 auto; margin: 0; min-width: 0; }
     .ui-collapse-btn {
       flex: 0 0 auto;
-      padding: 4px 8px;
-      font-size: 11px;
-      line-height: 1.2;
-      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      line-height: 0;
+    }
+    .ui-collapse-btn .ui-menu-icon {
+      display: block;
+      width: 18px;
+      height: 18px;
+      color: inherit;
+      pointer-events: none;
     }
     /* Collapsed: slim reopen rail; graph-main grows via flex */
     .app.sidebar-collapsed .ui {
@@ -116,18 +126,19 @@
       flex-direction: column;
       align-items: stretch;
       margin: 0;
-      height: 100%;
+      height: auto;
     }
     .app.sidebar-collapsed .ui-head h1 {
       display: none !important;
     }
     .app.sidebar-collapsed .ui-collapse-btn {
       width: 100%;
-      flex: 1 1 auto;
-      writing-mode: vertical-rl;
-      transform: rotate(180deg);
-      padding: 10px 4px;
-      letter-spacing: 0.04em;
+      height: 36px;
+      flex: 0 0 auto;
+      writing-mode: horizontal-tb;
+      transform: none;
+      padding: 0;
+      letter-spacing: normal;
     }
     .graph-main {
       flex: 1 1 auto;
@@ -422,6 +433,69 @@
       padding: 6px 8px;
       margin-top: 4px;
     }
+
+    /* Guide selector + Settings (left chrome unify) */
+    .guide-select { margin: 0 0 8px; }
+    .guide-select-label {
+      font-size: 11px; font-weight: 650; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--muted); margin: 0 0 4px;
+    }
+    .guide-seg { display: flex; gap: 4px; flex-wrap: wrap; }
+    .guide-seg a.guide-opt,
+    .guide-seg button.guide-opt {
+      flex: 1 1 0;
+      min-width: 0;
+      text-align: center;
+      font-size: 11px;
+      padding: 6px 8px;
+      text-decoration: none;
+      color: var(--text);
+      background: var(--btn);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      cursor: pointer;
+      font: inherit;
+      line-height: 1.2;
+    }
+    .guide-seg a.guide-opt:hover,
+    .guide-seg button.guide-opt:hover:not(:disabled) { border-color: var(--btn-hover-border); }
+    .guide-seg .guide-opt.active {
+      background: var(--btn-active);
+      border-color: var(--hex);
+    }
+    .ui-settings-row { margin: 0 0 8px; }
+    .ui-settings-row #btnSettings {
+      width: 100%;
+      font-size: 12px;
+      text-align: left;
+    }
+    .settings-modal {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0;
+      background: var(--modal-bg);
+      color: var(--text);
+      width: min(360px, calc(100vw - 32px));
+      max-width: calc(100vw - 32px);
+    }
+    .settings-modal::backdrop { background: var(--backdrop); }
+    .settings-modal-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; border-bottom: 1px solid var(--line);
+      background: var(--modal-bar);
+    }
+    .settings-modal-bar strong { flex: 1; font-size: 13px; }
+    .settings-modal-body { padding: 12px 14px; }
+    .settings-group { margin: 0 0 14px; }
+    .settings-group:last-child { margin-bottom: 0; }
+    .settings-group-label {
+      font-size: 11px; font-weight: 650; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--muted); margin: 0 0 6px;
+    }
+    .settings-group .row { margin: 0; }
+    .settings-note {
+      font-size: 11px; color: var(--muted); margin: 10px 0 0;
+    }
   </style>
 </head>
 <body>
@@ -430,43 +504,29 @@
     <aside class="ui" id="uiSidebar" aria-label="Shop controls">
       <div class="ui-head">
         <h1>Trillium 5/8 3v — Hex panel frames</h1>
-        <button type="button" class="ui-collapse-btn" id="btnSidebarToggle" aria-controls="uiSidebar" aria-expanded="true" title="Hide menu">Hide menu ▸</button>
+        <button type="button" class="ui-collapse-btn" id="btnSidebarToggle" aria-controls="uiSidebar" aria-expanded="true" aria-label="Hide menu" title="Hide menu">
+          <svg class="ui-menu-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
+          </svg>
+        </button>
       </div>
-      <div class="row">
-        <button id="btnHex" class="active" type="button">Hex ×73</button>
-        <button id="btnPent" class="secondary" type="button" disabled title="Pent polish paused until Hex passes review">Pent ×30</button>
-        <button id="btnDoor" class="secondary" type="button" disabled title="Door polish paused until Hex passes review">Door half</button>
+      <div class="guide-select" role="navigation" aria-label="Guide">
+        <div class="guide-select-label">Guide</div>
+        <div class="guide-seg">
+          <a class="guide-opt" href="../assembly/">Assembly</a>
+          <a class="guide-opt" href="../deck/">Deck</a>
+          <button type="button" class="guide-opt active" id="guideHex" aria-current="page" title="Hex ×73 panel frames">Hex panel</button>
+        </div>
       </div>
-      <div class="row">
-        <button id="uIN" type="button">in</button>
-        <button id="uMM" class="active" type="button">mm</button>
-        <button id="btnTheme" type="button" title="Toggle dark / light">Dark</button>
+      <div class="ui-settings-row">
+        <button type="button" id="btnSettings" title="Units and theme">Settings</button>
       </div>
+      <h2>Steps</h2>
       <div class="row" id="steps"></div>
-      <p class="flow-hint">Main view is the shop graph · click a node for 3D + side panel</p>
-      <details class="hex-meta" id="hexMeta">
-        <summary>Hex summary (collapsed)</summary>
-        <div class="meta-body" id="hexMetaBody"></div>
-      </details>
-      <div class="hint">
-        Machine nodes: 3D + setup · material nodes: 3D + list · Esc closes<br>
-        <span class="legend"><span style="background:#c48a4a"></span>strut</span>
-        <span class="legend"><span style="background:#5b3a1e"></span>6.5° bevel</span>
-        <span class="legend"><span style="background:#7dcea0"></span>jig</span>
-        <span class="legend"><span style="background:#f5c518"></span>DWE7492</span>
-        <span class="legend"><span style="background:#1a8f8a"></span>LS1019L</span>
-        <span class="legend"><span style="background:#f0a202"></span>stop</span><br>
-        Panel shell: <a href="../assembly/">assembly guide</a> · <a href="../deck/">deck guide</a><br>
-        Steps follow <a href="https://youtu.be/Sl9fEp-27EM" target="_blank" rel="noopener">this panel-build video</a>
-        + Trillium plan dimensions (PDF p5 / cross-section p7).
-        <span class="badge">Hex review</span>
-      </div>
     </aside>
-    <main class="graph-main" aria-label="Shop sequence main view">
-      <div class="graph-shell" id="graphShell" aria-label="Shop sequence graph">
+    <main class="graph-main" aria-label="Shop graph main view">
+      <div class="graph-shell" id="graphShell" aria-label="Shop graph">
         <div class="graph-toolbar">
-          <strong>Shop sequence</strong>
-          <span>pan · wheel/pinch zoom · click node → 3D</span>
           <span class="graph-spacer"></span>
           <button type="button" id="graphFit" title="Fit graph">Fit</button>
           <button type="button" id="graphResetView" title="Reset pan/zoom">Reset view</button>
@@ -504,6 +564,29 @@
           <div class="rme-status" id="rmeStatus" aria-live="polite">Idle</div>
         </div>
       </aside>
+    </div>
+  </dialog>
+  <dialog id="settingsModal" class="settings-modal" aria-labelledby="settingsModalTitle">
+    <div class="settings-modal-bar">
+      <strong id="settingsModalTitle">Settings</strong>
+      <button type="button" id="settingsModalClose">Close</button>
+    </div>
+    <div class="settings-modal-body">
+      <div class="settings-group">
+        <div class="settings-group-label">Units</div>
+        <div class="row" role="group" aria-label="Units">
+          <button id="uIN" type="button">in</button>
+          <button id="uMM" class="active" type="button">mm</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-group-label">Theme</div>
+        <div class="row" role="group" aria-label="Theme">
+          <button id="btnThemeLight" type="button">Light</button>
+          <button id="btnThemeDark" type="button">Dark</button>
+        </div>
+      </div>
+      <p class="settings-note">Hex ×73 panel frames · this guide</p>
     </div>
   </dialog>
 <script type="importmap">
@@ -738,27 +821,27 @@ import * as THREE from 'three';
 
         // fan-out from ripped-half
         { id: 'm-miterCrosscut', kind: 'machine', title: 'Cut blanks', machineVisual: 'miterCrosscut', stepId: 1, x: 560, y: 0 },
-        { id: 'optional-finish', kind: 'material', title: 'Optional finish', materialKey: 'optional-finish', stepId: 2, x: 560, y: 168 },
-        { id: 'm-tableBevel', kind: 'machine', title: 'Bevel rip', machineVisual: 'tableBevel', stepId: 4, x: 760, y: 168 },
+        { id: 'optional-finish', kind: 'material', title: 'Optional finish', materialKey: 'optional-finish', stepId: 2, x: 560, y: 280 },
+        { id: 'm-tableBevel', kind: 'machine', title: 'Bevel rip', machineVisual: 'tableBevel', stepId: 4, x: 760, y: 280 },
 
         { id: 'blank', kind: 'material', title: 'Blank', materialKey: 'blank', stepId: 1, x: 760, y: 0 },
-        { id: 'leftover', kind: 'material', title: 'Leftover stock', materialKey: 'leftover', stepId: 1, x: 760, y: -160 },
-        { id: 'beveled', kind: 'material', title: 'Beveled', materialKey: 'beveled', stepId: 4, x: 940, y: 100 },
+        { id: 'leftover', kind: 'material', title: 'Leftover stock', materialKey: 'leftover', stepId: 1, x: 760, y: -280 },
+        { id: 'beveled', kind: 'material', title: 'Beveled', materialKey: 'beveled', stepId: 4, x: 940, y: 140 },
 
         // fan-out: Initial miters · base vs apex lanes
-        { id: 'm-miterBase', kind: 'machine', title: 'Initial miters · base', machineVisual: 'miterBase', stepId: 6, x: 1120, y: 20 },
-        { id: 'm-miterApex', kind: 'machine', title: 'Initial miters · apex', machineVisual: 'miterApex', stepId: 7, x: 1120, y: 180 },
-        { id: 'mitered-base', kind: 'material', title: 'Mitered base', materialKey: 'mitered-base', stepId: 6, x: 1300, y: 20 },
-        { id: 'mitered-apex', kind: 'material', title: 'Mitered apex', materialKey: 'mitered-apex', stepId: 7, x: 1300, y: 180 },
+        { id: 'm-miterBase', kind: 'machine', title: 'Initial miters · base', machineVisual: 'miterBase', stepId: 6, x: 1120, y: 0 },
+        { id: 'm-miterApex', kind: 'machine', title: 'Initial miters · apex', machineVisual: 'miterApex', stepId: 7, x: 1120, y: 280 },
+        { id: 'mitered-base', kind: 'material', title: 'Mitered base', materialKey: 'mitered-base', stepId: 6, x: 1300, y: 0 },
+        { id: 'mitered-apex', kind: 'material', title: 'Mitered apex', materialKey: 'mitered-apex', stepId: 7, x: 1300, y: 280 },
 
         // fan-in: one compound ears from both mitered lanes
-        { id: 'm-miterCompound', kind: 'machine', title: 'Compound ears', machineVisual: 'miterCompound', stepId: 8, x: 1520, y: 100 },
-        { id: 'ears', kind: 'material', title: 'Ears', materialKey: 'ears', stepId: 8, x: 1700, y: 100 },
+        { id: 'm-miterCompound', kind: 'machine', title: 'Compound ears', machineVisual: 'miterCompound', stepId: 8, x: 1520, y: 140 },
+        { id: 'ears', kind: 'material', title: 'Ears', materialKey: 'ears', stepId: 8, x: 1700, y: 140 },
 
         // parallel jig lane
-        { id: 'jig', kind: 'material', title: 'Jig', materialKey: 'jig', stepId: 3, x: 560, y: 340 },
-        { id: 'm-handLayout', kind: 'machine', title: 'Lay out jig', machineVisual: 'handLayout', stepId: 3, x: 376, y: 340 },
-        { id: 'jig-stops', kind: 'material', title: 'Jig + stops', materialKey: 'jig-stops', stepId: 5, x: 760, y: 340 },
+        { id: 'jig', kind: 'material', title: 'Jig', materialKey: 'jig', stepId: 3, x: 560, y: 560 },
+        { id: 'm-handLayout', kind: 'machine', title: 'Lay out jig', machineVisual: 'handLayout', stepId: 3, x: 376, y: 560 },
+        { id: 'jig-stops', kind: 'material', title: 'Jig + stops', materialKey: 'jig-stops', stepId: 5, x: 760, y: 560 },
 
         // assemble fan-in
         { id: 'm-drill', kind: 'machine', title: 'Assemble', machineVisual: 'drill', stepId: 9, x: 1880, y: 220 },
@@ -1160,12 +1243,10 @@ import * as THREE from 'three';
     }
     function applyThemeDom() {
       document.documentElement.setAttribute('data-theme', theme);
-      const btn = document.getElementById('btnTheme');
-      if (btn) {
-        btn.textContent = theme === 'light' ? 'Light' : 'Dark';
-        btn.classList.toggle('active', theme === 'light');
-        btn.title = theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode';
-      }
+      const lightBtn = document.getElementById('btnThemeLight');
+      const darkBtn = document.getElementById('btnThemeDark');
+      if (lightBtn) lightBtn.classList.toggle('active', theme === 'light');
+      if (darkBtn) darkBtn.classList.toggle('active', theme === 'dark');
     }
     applyThemeDom();
 
@@ -1182,9 +1263,10 @@ import * as THREE from 'three';
       const btn = document.getElementById('btnSidebarToggle');
       if (app) app.classList.toggle('sidebar-collapsed', sidebarCollapsed);
       if (btn) {
-        btn.textContent = sidebarCollapsed ? '◂ Show menu' : 'Hide menu ▸';
+        const label = sidebarCollapsed ? 'Show menu' : 'Hide menu';
         btn.setAttribute('aria-expanded', sidebarCollapsed ? 'false' : 'true');
-        btn.title = sidebarCollapsed ? 'Show menu' : 'Hide menu';
+        btn.setAttribute('aria-label', label);
+        btn.title = label;
       }
     }
     let _sidebarRefitTimer = 0;
@@ -3079,7 +3161,8 @@ import * as THREE from 'three';
     function setMachineSetup() { /* no-op: setup shown in roleModal */ }
 
     function setDims() {
-      document.getElementById('hexMetaBody').textContent = fullHexSummary();
+      const el = document.getElementById('hexMetaBody');
+      if (el) el.textContent = fullHexSummary();
     }
 
     function renderSteps() {
@@ -3135,9 +3218,30 @@ import * as THREE from 'three';
     }
     document.getElementById('uIN').onclick = () => { setUnits('in'); };
     document.getElementById('uMM').onclick = () => { setUnits('mm'); };
-    document.getElementById('btnTheme').onclick = () => {
-      setTheme(theme === 'light' ? 'dark' : 'light');
-    };
+    const btnThemeLight = document.getElementById('btnThemeLight');
+    const btnThemeDark = document.getElementById('btnThemeDark');
+    if (btnThemeLight) btnThemeLight.onclick = () => { setTheme('light'); };
+    if (btnThemeDark) btnThemeDark.onclick = () => { setTheme('dark'); };
+    const settingsModal = document.getElementById('settingsModal');
+    const btnSettings = document.getElementById('btnSettings');
+    const settingsModalClose = document.getElementById('settingsModalClose');
+    function openSettingsModal() {
+      if (!settingsModal) return;
+      if (typeof settingsModal.showModal === 'function') settingsModal.showModal();
+      else settingsModal.setAttribute('open', '');
+    }
+    function closeSettingsModal() {
+      if (!settingsModal) return;
+      if (typeof settingsModal.close === 'function') settingsModal.close();
+      else settingsModal.removeAttribute('open');
+    }
+    if (btnSettings) btnSettings.onclick = () => { openSettingsModal(); };
+    if (settingsModalClose) settingsModalClose.onclick = () => { closeSettingsModal(); };
+    if (settingsModal) {
+      settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) closeSettingsModal();
+      });
+    }
     document.getElementById('btnSidebarToggle').onclick = () => {
       setSidebarCollapsed(!sidebarCollapsed);
     };
