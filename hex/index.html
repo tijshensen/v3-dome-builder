@@ -315,34 +315,113 @@
       position: relative;
       height: calc(100% - 46px);
       display: flex;
-      flex-direction: row;
+      flex-direction: column;
       min-height: 0;
     }
     .role-modal-canvas-wrap {
-      flex: 1 1 58%;
+      flex: 1 1 auto;
       min-width: 0;
-      min-height: 0;
+      min-height: 220px;
+      height: 58%;
       position: relative;
       background: var(--modal-bg);
     }
-    .role-modal-body:not(.has-setup) .role-modal-canvas-wrap { flex: 1 1 100%; }
+    .role-modal-body:not(.has-setup) .role-modal-canvas-wrap {
+      flex: 1 1 100%;
+      height: 100%;
+    }
     #roleModalCanvas { display: block; width: 100%; height: 100%; }
     .role-modal-setup {
-      flex: 0 0 min(340px, 40%);
-      width: min(340px, 40%);
-      max-width: 380px;
+      flex: 0 0 auto;
+      width: 100%;
+      max-width: none;
+      max-height: 42%;
       overflow: auto;
       padding: 12px 14px;
-      border-left: 1px solid var(--line);
+      border-left: none;
+      border-top: 1px solid var(--line);
       background: var(--inset);
       font-size: 12px;
       margin: 0;
       border-radius: 0;
+      box-sizing: border-box;
     }
     .role-modal-setup[hidden],
     .role-modal-body:not(.has-setup) .role-modal-setup { display: none !important; }
     .role-modal-setup.materiallist .ms-title { color: var(--wood); }
     .role-modal-setup.materiallist { border-color: color-mix(in srgb, var(--wood) 40%, var(--line)); }
+    .role-modal-edit {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .role-modal-edit[hidden] { display: none !important; }
+    .role-modal-edit .rme-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .role-modal-edit textarea {
+      width: 100%;
+      min-height: 64px;
+      resize: vertical;
+      font: inherit;
+      font-size: 12px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: var(--modal-bg);
+      color: var(--text);
+      box-sizing: border-box;
+    }
+    .role-modal-edit .rme-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .role-modal-edit .rme-row button {
+      font: inherit;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--btn-border, var(--line));
+      background: var(--btn-bg, var(--inset));
+      color: var(--text);
+      cursor: pointer;
+    }
+    .role-modal-edit .rme-row button:hover:not(:disabled) {
+      border-color: var(--btn-hover-border, var(--hex));
+    }
+    .role-modal-edit .rme-row button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .role-modal-edit .rme-row button.primary {
+      background: color-mix(in srgb, var(--hex) 28%, var(--inset));
+      border-color: color-mix(in srgb, var(--hex) 55%, var(--line));
+      font-weight: 600;
+    }
+    .role-modal-edit .rme-status {
+      font-size: 11px;
+      color: var(--muted);
+      min-height: 1.2em;
+    }
+    .role-modal-edit .rme-status.is-error { color: #c62828; }
+    .role-modal-edit .rme-status.is-ok { color: #2e7d32; }
+    .role-modal-edit .rme-override-tip {
+      font-size: 11px;
+      color: var(--text);
+      background: color-mix(in srgb, var(--hex) 12%, transparent);
+      border: 1px dashed color-mix(in srgb, var(--hex) 40%, var(--line));
+      border-radius: 6px;
+      padding: 6px 8px;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -412,7 +491,19 @@
       <div class="role-modal-canvas-wrap">
         <canvas id="roleModalCanvas"></canvas>
       </div>
-      <aside id="roleModalSetup" class="role-modal-setup machinesetup" hidden aria-live="polite"></aside>
+      <aside id="roleModalSetup" class="role-modal-setup machinesetup" hidden aria-live="polite">
+        <div id="roleModalSetupBody"></div>
+        <div id="roleModalEdit" class="role-modal-edit" hidden>
+          <div class="rme-title">Edit with Grok</div>
+          <textarea id="rmePrompt" placeholder="Example: taller · note: check fit · qty 10 · red · miter 30" rows="3" aria-label="Edit prompt"></textarea>
+          <div class="rme-row">
+            <button type="button" class="primary" id="rmeApply">Apply</button>
+            <button type="button" id="rmeUndo" disabled>Undo</button>
+            <button type="button" id="rmeReset" disabled>Reset to original</button>
+          </div>
+          <div class="rme-status" id="rmeStatus" aria-live="polite">Idle</div>
+        </div>
+      </aside>
     </div>
   </dialog>
 <script type="importmap">
@@ -484,7 +575,7 @@ import * as THREE from 'three';
             `Prefer ${TOOL_MITER_SAW} for crosscutting ripped stock to ~${fmt(BLANK_LEN)}`,
             'Use a stop block for repeat blank length on the miter saw',
             'No bevel / no compound for this step',
-            blankStockLeftoverSetupLine()
+            'Leftover stock → see Leftover material node'
           ]
         }
       },
@@ -651,6 +742,7 @@ import * as THREE from 'three';
         { id: 'm-tableBevel', kind: 'machine', title: 'Bevel rip', machineVisual: 'tableBevel', stepId: 4, x: 760, y: 168 },
 
         { id: 'blank', kind: 'material', title: 'Blank', materialKey: 'blank', stepId: 1, x: 760, y: 0 },
+        { id: 'leftover', kind: 'material', title: 'Leftover stock', materialKey: 'leftover', stepId: 1, x: 760, y: -160 },
         { id: 'beveled', kind: 'material', title: 'Beveled', materialKey: 'beveled', stepId: 4, x: 940, y: 100 },
 
         // fan-out: Initial miters · base vs apex lanes
@@ -682,7 +774,8 @@ import * as THREE from 'three';
         { from: 'ripped-half', to: 'optional-finish', fan: true },
         { from: 'ripped-half', to: 'm-tableBevel', fan: true },
 
-        { from: 'm-miterCrosscut', to: 'blank' },
+        { from: 'm-miterCrosscut', to: 'blank', fan: true },
+        { from: 'm-miterCrosscut', to: 'leftover', fan: true },
         { from: 'blank', to: 'm-tableBevel' },
         { from: 'optional-finish', to: 'm-tableBevel' },
         { from: 'm-tableBevel', to: 'beveled' },
@@ -730,7 +823,15 @@ import * as THREE from 'three';
         return { qty: 'matched pair', dims: halfDimsLabel(), note: '' };
       }
       if (k === 'blank') {
-        return { qty: String(HEX.qty * 3), dims: blankWhlLabel(), note: blankStockLeftoverNote() };
+        return { qty: String(HEX.qty * 3), dims: blankWhlLabel(), note: '' };
+      }
+      if (k === 'leftover') {
+        // One remnant per ripped half after 3 blank cuts (kerf math in panel-specs)
+        return {
+          qty: `${RAW_STOCK_QTY * 2}`,
+          dims: leftoverWhlLabel(),
+          note: leftoverSawdustNote()
+        };
       }
       if (k === 'beveled') {
         // Finished face locked in panel-specs; same blank count; bevel as note
@@ -795,7 +896,7 @@ import * as THREE from 'three';
         const mv = n.machineVisual;
         if (mv === 'tableRip') return `${TOOL_TABLE_SAW} · rip`;
         if (mv === 'tableBevel') return `${TOOL_TABLE_SAW} · ${BEVEL_DEG}°`;
-        if (mv === 'miterCrosscut') return `${TOOL_MITER_SAW} · crosscut · ${blankStockLeftoverNote()}`;
+        if (mv === 'miterCrosscut') return `${TOOL_MITER_SAW} · crosscut`;
         if (mv === 'miterBase') return `${TOOL_MITER_SAW} · base ${HEX.base}°`;
         if (mv === 'miterApex') return `${TOOL_MITER_SAW} · apex ${HEX.apex}°`;
         if (mv === 'miterSimple') return `${TOOL_MITER_SAW} · miters`;
@@ -812,6 +913,223 @@ import * as THREE from 'three';
     const UNITS_KEY = 'hex-units';
     const THEME_KEY = 'hex-theme';
     const SIDEBAR_KEY = 'hex-sidebar-collapsed';
+    const OVERRIDE_STORAGE_KEY = 'hex-3d-overrides-v1';
+    const OVERRIDE_MOCK_KEY = 'hex-3d-edit-mock';
+    const OVERRIDE_SCHEMA_VERSION = 1;
+    const OVERRIDE_ALLOW = new Set([
+      'schemaVersion', 'note', 'qtyLabel', 'dimsLabel', 'labelTexts',
+      'stackCount', 'stackRows', 'scale', 'miterDeg', 'bevelDeg', 'highlightColor'
+    ]);
+
+    /** @type {Map<string, { history: object[], current: object|null }>} */
+    const overrideStore = new Map();
+
+    function overrideKey(nodeId, kind) {
+      return `${nodeId}:${kind}`;
+    }
+
+    function clampNum(n, lo, hi, fallback) {
+      const v = Number(n);
+      if (!Number.isFinite(v)) return fallback;
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    function clampStr(s, maxLen) {
+      if (typeof s !== 'string') return undefined;
+      const t = s.trim();
+      if (!t) return undefined;
+      return t.slice(0, maxLen);
+    }
+
+    /** Validate allowlist; drop unknown keys; clamp; reject non-objects. */
+    function validateOverride(raw) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+      const out = { schemaVersion: OVERRIDE_SCHEMA_VERSION };
+      for (const k of Object.keys(raw)) {
+        if (!OVERRIDE_ALLOW.has(k)) continue;
+        const v = raw[k];
+        if (k === 'schemaVersion') {
+          out.schemaVersion = OVERRIDE_SCHEMA_VERSION;
+        } else if (k === 'note' || k === 'qtyLabel' || k === 'dimsLabel') {
+          const s = clampStr(v, 120);
+          if (s !== undefined) out[k] = s;
+        } else if (k === 'labelTexts') {
+          if (Array.isArray(v)) {
+            const arr = v.map((x) => clampStr(x, 80)).filter(Boolean).slice(0, 8);
+            if (arr.length) out.labelTexts = arr;
+          }
+        } else if (k === 'stackCount') {
+          out.stackCount = clampNum(v, 1, 64, undefined);
+          if (out.stackCount === undefined) delete out.stackCount;
+        } else if (k === 'stackRows') {
+          out.stackRows = clampNum(v, 1, 16, undefined);
+          if (out.stackRows === undefined) delete out.stackRows;
+        } else if (k === 'scale') {
+          out.scale = clampNum(v, 0.4, 2.5, undefined);
+          if (out.scale === undefined) delete out.scale;
+        } else if (k === 'miterDeg') {
+          out.miterDeg = clampNum(v, 0, 60, undefined);
+          if (out.miterDeg === undefined) delete out.miterDeg;
+        } else if (k === 'bevelDeg') {
+          out.bevelDeg = clampNum(v, 0, 45, undefined);
+          if (out.bevelDeg === undefined) delete out.bevelDeg;
+        } else if (k === 'highlightColor') {
+          if (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v.trim())) {
+            out.highlightColor = v.trim().toLowerCase();
+          }
+        }
+      }
+      const keys = Object.keys(out).filter((k) => k !== 'schemaVersion');
+      if (!keys.length) return null;
+      return out;
+    }
+
+    function loadOverridesFromStorage() {
+      overrideStore.clear();
+      try {
+        const raw = localStorage.getItem(OVERRIDE_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return;
+        for (const [key, entry] of Object.entries(parsed)) {
+          if (!entry || typeof entry !== 'object') continue;
+          const history = Array.isArray(entry.history)
+            ? entry.history.map(validateOverride).filter(Boolean)
+            : [];
+          const current = entry.current ? validateOverride(entry.current) : null;
+          if (current || history.length) {
+            overrideStore.set(key, { history, current });
+          }
+        }
+      } catch (e) {}
+    }
+
+    function persistOverrides() {
+      const obj = {};
+      for (const [key, entry] of overrideStore.entries()) {
+        obj[key] = {
+          history: entry.history || [],
+          current: entry.current || null
+        };
+      }
+      try {
+        localStorage.setItem(OVERRIDE_STORAGE_KEY, JSON.stringify(obj));
+      } catch (e) {}
+    }
+
+    function getOverrideEntry(key) {
+      return overrideStore.get(key) || null;
+    }
+
+    function getCurrentOverride(nodeId, kind) {
+      const e = getOverrideEntry(overrideKey(nodeId, kind));
+      return e && e.current ? e.current : null;
+    }
+
+    function setOverrideCurrent(key, next) {
+      let e = overrideStore.get(key);
+      if (!e) {
+        e = { history: [], current: null };
+        overrideStore.set(key, e);
+      }
+      // Always push previous current (null = authored) so Undo restores prior step
+      e.history.push(e.current);
+      e.current = next;
+      persistOverrides();
+    }
+
+    function undoOverride(key) {
+      const e = overrideStore.get(key);
+      if (!e || !e.history.length) return false;
+      e.current = e.history.pop(); // may be null (= authored)
+      if (e.current == null && !e.history.length) overrideStore.delete(key);
+      persistOverrides();
+      return true;
+    }
+
+    function resetOverride(key) {
+      if (!overrideStore.has(key)) return false;
+      overrideStore.delete(key);
+      persistOverrides();
+      return true;
+    }
+
+    function useMockEdit() {
+      if (_qs.get('mockEdit') === '1') return true;
+      try {
+        if (localStorage.getItem(OVERRIDE_MOCK_KEY) === '1') return true;
+      } catch (e) {}
+      return false;
+    }
+
+    /** Deterministic keyword mock for QA without Worker. */
+    function mockOverrideFromPrompt(prompt, context) {
+      const p = String(prompt || '').toLowerCase();
+      const out = { schemaVersion: OVERRIDE_SCHEMA_VERSION };
+      if (/\btaller\b|\bbigger\b|\blarger\b/.test(p)) out.scale = 1.35;
+      if (/\bshorter\b|\bsmaller\b/.test(p)) out.scale = 0.75;
+      const noteM = p.match(/\bnote:\s*(.+?)(?:\s*[·|]|$)/i) || p.match(/\bnote\s+(.+?)(?:\s*[·|]|$)/i);
+      if (noteM) out.note = noteM[1].trim().slice(0, 120);
+      const qtyM = p.match(/\bqty\s*[:=]?\s*(\d+)\b/i);
+      if (qtyM) out.qtyLabel = String(qtyM[1]);
+      const dimsM = p.match(/\bdims?:\s*(.+?)(?:\s*[·|]|$)/i);
+      if (dimsM) out.dimsLabel = dimsM[1].trim().slice(0, 120);
+      if (/\bred\b/.test(p)) out.highlightColor = '#c62828';
+      if (/\bblue\b/.test(p)) out.highlightColor = '#1565c0';
+      if (/\bgreen\b/.test(p)) out.highlightColor = '#2e7d32';
+      if (/\byellow\b/.test(p)) out.highlightColor = '#f5c518';
+      const miterM = p.match(/\bmiters?\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i);
+      if (miterM) out.miterDeg = Number(miterM[1]);
+      const bevelM = p.match(/\bbevels?\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i);
+      if (bevelM) out.bevelDeg = Number(bevelM[1]);
+      const labels = [];
+      const labelM = p.match(/\blabel:\s*(.+?)(?:\s*[·|]|$)/i);
+      if (labelM) labels.push(labelM[1].trim());
+      if (labels.length) out.labelTexts = labels;
+      if (context && context.kind === 'machine' && out.miterDeg == null && /\bcrosscut\b/.test(p)) {
+        out.miterDeg = 0;
+      }
+      return validateOverride(out);
+    }
+
+    async function requestHexEdit(prompt, context) {
+      if (useMockEdit()) {
+        const override = mockOverrideFromPrompt(prompt, context);
+        if (!override) return { ok: false, error: 'Mock found no keywords. Try: taller, note: …, qty 10, red, miter 30' };
+        return { ok: true, override, mock: true };
+      }
+      try {
+        const res = await fetch('/api/hex-edit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, context, schemaVersion: OVERRIDE_SCHEMA_VERSION })
+        });
+        if (res.status === 404) {
+          const override = mockOverrideFromPrompt(prompt, context);
+          if (!override) return { ok: false, error: 'Edit API missing (404). Enable mock with ?mockEdit=1' };
+          return { ok: true, override, mock: true };
+        }
+        if (!res.ok) {
+          const override = mockOverrideFromPrompt(prompt, context);
+          if (override) return { ok: true, override, mock: true };
+          return { ok: false, error: `Edit API error ${res.status}` };
+        }
+        const data = await res.json();
+        if (!data || !data.ok) {
+          return { ok: false, error: (data && data.error) || 'Edit failed' };
+        }
+        const override = validateOverride(data.override);
+        if (!override) return { ok: false, error: 'Invalid override from API' };
+        return { ok: true, override };
+      } catch (err) {
+        const override = mockOverrideFromPrompt(prompt, context);
+        if (override) return { ok: true, override, mock: true };
+        return { ok: false, error: 'Network error — enable ?mockEdit=1 for offline QA' };
+      }
+    }
+
+    loadOverridesFromStorage();
+
     /** First visit: mm. Returning visitors keep hex-units override. */
     function readStoredUnits() {
       try {
@@ -993,6 +1311,17 @@ import * as THREE from 'three';
       const h = fmt(STRUT_H);
       const l = fmt(BLANK_LEN);
       return `${w} × ${h} × ~${l}`;
+    }
+    /** Leftover remnant: same ripped/blank cross-section × leftover length after kerf. */
+    function leftoverWhlLabel() {
+      const w = fmt(STOCK_W);
+      const h = fmt(STRUT_H);
+      const l = fmt(blankStockLeftoverMm());
+      return `${w} × ${h} × ~${l}`;
+    }
+    /** Sawdust note for Leftover material node (not machine callout). */
+    function leftoverSawdustNote() {
+      return `sawdust ~${fmtVol(blankCrosscutSawdustMm3())}/half (−${BLANKS_PER_RIPPED_HALF}×${fmt(BLADE_KERF_MM)} kerf)`;
     }
 
     /**
@@ -1398,36 +1727,60 @@ import * as THREE from 'three';
       return g;
     }
 
-    function addMachineVisual(kind) {
+    function addMachineVisual(kind, ov) {
       if (!kind) return;
+      const o = ov || {};
       if (kind === 'tableRip') {
         addTableSawSchematic({
-          bevelDeg: 0,
+          bevelDeg: o.bevelDeg != null ? o.bevelDeg : 0,
           fenceFaceMm: STOCK_W,
           stockWmm: FULL_2X6_W,
           stockHmm: STRUT_H,
           label: `PDF 2×6 → ${fmt(STRUT_H)}×${fmt(STOCK_W)}`
         });
       } else if (kind === 'tableBevel') {
+        const bd = o.bevelDeg != null ? o.bevelDeg : BEVEL_DEG;
         addTableSawSchematic({
-          bevelDeg: BEVEL_DEG,
+          bevelDeg: bd,
           fenceFaceMm: STRUT_W,
           stockWmm: STOCK_W,
           stockHmm: STRUT_H,
-          label: `${BEVEL_DEG}° → face ${fmt(STRUT_W)}`
+          label: `${bd}° → face ${fmt(STRUT_W)}`
         });
       } else if (kind === 'miterCrosscut') {
-        addMiterSawSchematic({ miterDeg: 0, bevelDeg: 0, stop: true, label: `crosscut ~${fmt(BLANK_LEN)}` });
-      } else if (kind === 'miterBase') {
-        addMiterSawSchematic({ miterDeg: HEX.base, bevelDeg: 0, stop: true, label: `base miter ${HEX.base}° · bevel 0°` });
-      } else if (kind === 'miterApex') {
-        addMiterSawSchematic({ miterDeg: HEX.apex, bevelDeg: 0, stop: true, label: `apex miter ${HEX.apex}° · bevel 0°` });
-      } else if (kind === 'miterSimple') {
-        addMiterSawSchematic({ miterDeg: HEX.apex, bevelDeg: 0, stop: true, label: `miters ${HEX.base}° / ${HEX.apex}°` });
-      } else if (kind === 'miterCompound') {
         addMiterSawSchematic({
-          miterDeg: HEX.apex, bevelDeg: BEVEL_DEG, bevelSide: 'L', stop: true, compound: true,
-          label: `compound ears · keep miter + ${BEVEL_DEG}° · RH = opposite tilt`
+          miterDeg: o.miterDeg != null ? o.miterDeg : 0,
+          bevelDeg: o.bevelDeg != null ? o.bevelDeg : 0,
+          stop: true,
+          label: `crosscut ~${fmt(BLANK_LEN)}`
+        });
+      } else if (kind === 'miterBase') {
+        addMiterSawSchematic({
+          miterDeg: o.miterDeg != null ? o.miterDeg : HEX.base,
+          bevelDeg: o.bevelDeg != null ? o.bevelDeg : 0,
+          stop: true,
+          label: `base miter ${o.miterDeg != null ? o.miterDeg : HEX.base}° · bevel ${o.bevelDeg != null ? o.bevelDeg : 0}°`
+        });
+      } else if (kind === 'miterApex') {
+        addMiterSawSchematic({
+          miterDeg: o.miterDeg != null ? o.miterDeg : HEX.apex,
+          bevelDeg: o.bevelDeg != null ? o.bevelDeg : 0,
+          stop: true,
+          label: `apex miter ${o.miterDeg != null ? o.miterDeg : HEX.apex}° · bevel ${o.bevelDeg != null ? o.bevelDeg : 0}°`
+        });
+      } else if (kind === 'miterSimple') {
+        addMiterSawSchematic({
+          miterDeg: o.miterDeg != null ? o.miterDeg : HEX.apex,
+          bevelDeg: o.bevelDeg != null ? o.bevelDeg : 0,
+          stop: true,
+          label: `miters ${HEX.base}° / ${HEX.apex}°`
+        });
+      } else if (kind === 'miterCompound') {
+        const md = o.miterDeg != null ? o.miterDeg : HEX.apex;
+        const bd = o.bevelDeg != null ? o.bevelDeg : BEVEL_DEG;
+        addMiterSawSchematic({
+          miterDeg: md, bevelDeg: bd, bevelSide: 'L', stop: true, compound: true,
+          label: `compound ears · keep miter + ${bd}° · RH = opposite tilt`
         });
       } else if (kind === 'handLayout' || kind === 'drill' || kind === 'none') {
         addNoMachineVisual(kind);
@@ -1627,6 +1980,18 @@ import * as THREE from 'three';
         woodTarget.add(makeLabel(`1 of ${blankQty} shown  (${HEX.qty} panels × 3)`, new THREE.Vector3(0.05, -0.08, 0)));
         return `${blankQty} · ${blankWhlLabel()}`;
       }
+      if (key === 'leftover') {
+        addMaterialsPad(1.0, 0.85);
+        // Short remnant — same section as blank stock, shorter length visual
+        const rem = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.16, 0.28), woodMat);
+        rem.position.set(0, 0.1, 0);
+        woodTarget.add(rem);
+        addDarkOutline(rem);
+        woodTarget.add(makeLabel('leftover stock', new THREE.Vector3(0, 0.38, 0)));
+        woodTarget.add(makeLabel(leftoverWhlLabel(), new THREE.Vector3(0, 0.28, 0)));
+        woodTarget.add(makeLabel(leftoverSawdustNote(), new THREE.Vector3(0, -0.08, 0)));
+        return `${RAW_STOCK_QTY * 2} · ${leftoverWhlLabel()}`;
+      }
       if (key === 'beveled') {
         addMaterialsPad(1.1, 0.9);
         const finished = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.22, 0.18), woodMat);
@@ -1716,13 +2081,43 @@ import * as THREE from 'three';
       graphHold.clear();
     }
 
+    function applyOverrideVisuals(root, ov) {
+      if (!root || !ov) return;
+      if (ov.scale != null && Number.isFinite(ov.scale)) {
+        root.scale.setScalar(ov.scale);
+      }
+      if (ov.highlightColor) {
+        const col = new THREE.Color(ov.highlightColor);
+        root.traverse((obj) => {
+          if (obj.isMesh && obj.material && obj.material.color) {
+            const m = obj.material.clone();
+            m.color = col;
+            if ('emissive' in m) {
+              m.emissive = col.clone().multiplyScalar(0.15);
+              m.emissiveIntensity = 0.35;
+            }
+            obj.material = m;
+          }
+        });
+      }
+      if (Array.isArray(ov.labelTexts)) {
+        ov.labelTexts.forEach((t, i) => {
+          root.add(makeLabel(t, new THREE.Vector3(0, 0.45 + i * 0.08, 0)));
+        });
+      }
+      if (ov.note) root.add(makeLabel(ov.note, new THREE.Vector3(0, -0.22, 0)));
+      if (ov.qtyLabel) root.add(makeLabel(`qty ${ov.qtyLabel}`, new THREE.Vector3(0.35, 0.4, 0)));
+      if (ov.dimsLabel) root.add(makeLabel(ov.dimsLabel, new THREE.Vector3(-0.35, 0.4, 0)));
+    }
+
     function buildGraphNodeRoot(n) {
       const root = new THREE.Group();
       root.name = `graph:${n.id}`;
+      const ov = getCurrentOverride(n.id, n.kind);
       if (n.kind === 'machine') {
         const prev = machineTarget;
         machineTarget = root;
-        addMachineVisual(n.machineVisual);
+        addMachineVisual(n.machineVisual, ov || {});
         machineTarget = prev;
       } else {
         const prev = woodTarget;
@@ -1730,12 +2125,54 @@ import * as THREE from 'three';
         buildMaterialKey(n.materialKey);
         woodTarget = prev;
       }
+      applyOverrideVisuals(root, ov);
       const callout = nodeCallout(n);
       const preview = captureRolePreview(root);
       // captureRolePreview parks in roleHold — reclaim for graph
       graphHold.add(root);
-      graphNodeState.set(n.id, { root, title: n.title, callout, preview });
+      graphNodeState.set(n.id, { root, title: n.title, callout, preview, override: ov || null });
       return graphNodeState.get(n.id);
+    }
+
+    /** Rebuild one graph node and refresh open modal / DOM thumb. */
+    function rebuildGraphNodeLive(nodeId) {
+      const n = nodeById(nodeId);
+      if (!n) return;
+      const prev = graphNodeState.get(nodeId);
+      const wasInModal = graphModalNodeId === nodeId && modalOpen;
+      if (wasInModal) {
+        // Detach from modal host without closing dialog
+        clearCss2dIn(modalHost);
+        while (modalLabelRenderer.domElement.firstChild) {
+          modalLabelRenderer.domElement.removeChild(modalLabelRenderer.domElement.firstChild);
+        }
+        modalHost.clear();
+      }
+      if (prev) {
+        clearCss2dIn(prev.root);
+        if (prev.root.parent) prev.root.parent.remove(prev.root);
+        graphNodeState.delete(nodeId);
+      }
+      const st = buildGraphNodeRoot(n);
+      // Refresh graph card callout/thumb
+      const card = document.querySelector(`.graph-node[data-node-id="${nodeId}"]`);
+      if (card && st) {
+        const callEl = card.querySelector('.gn-callout');
+        if (callEl) callEl.textContent = st.callout || '';
+        const thumb = card.querySelector('.gn-thumb');
+        if (thumb && st.preview) thumb.style.backgroundImage = `url(${st.preview})`;
+      }
+      if (wasInModal) {
+        const title = `${n.kind === 'machine' ? 'Machine' : 'Material'}: ${n.title}` +
+          (st.callout ? ' — ' + st.callout : '');
+        if (n.kind === 'machine' && typeof n.stepId === 'number') {
+          fillModalSide({ kind: 'machine', stepObj: STEPS[n.stepId], node: n });
+        } else if (n.kind === 'material') {
+          fillModalSide({ kind: 'material', node: n });
+        }
+        syncEditChrome(n);
+        presentModalRoot(st.root, title);
+      }
     }
 
     function rebuildGraphPreviews() {
@@ -2276,6 +2713,7 @@ import * as THREE from 'three';
       const title = roleState[role].title + (roleState[role].callout ? ' — ' + roleState[role].callout : '');
       if (role === 'machine') fillModalSide({ kind: 'machine', stepObj: STEPS[step] });
       else fillModalSide(null);
+      syncEditChrome(null);
       presentModalRoot(root, title);
     }
 
@@ -2300,14 +2738,15 @@ import * as THREE from 'three';
       }
       const title = `${n.kind === 'machine' ? 'Machine' : 'Material'}: ${n.title}` +
         (st.callout ? ' — ' + st.callout : '');
-      // Machine → Machine Setup; material → Material list (same split layout)
+      // Machine → Machine Setup; material → Material list (info BELOW 3D)
       if (n.kind === 'machine' && typeof n.stepId === 'number') {
-        fillModalSide({ kind: 'machine', stepObj: STEPS[n.stepId] });
+        fillModalSide({ kind: 'machine', stepObj: STEPS[n.stepId], node: n });
       } else if (n.kind === 'material') {
         fillModalSide({ kind: 'material', node: n });
       } else {
         fillModalSide(null);
       }
+      syncEditChrome(n);
       presentModalRoot(st.root, title);
     }
 
@@ -2346,6 +2785,12 @@ import * as THREE from 'three';
     modalEl.addEventListener('click', (e) => {
       if (e.target === modalEl) closeRoleModal();
     });
+    const rmeApply = document.getElementById('rmeApply');
+    const rmeUndo = document.getElementById('rmeUndo');
+    const rmeReset = document.getElementById('rmeReset');
+    if (rmeApply) rmeApply.onclick = () => { onEditApply(); };
+    if (rmeUndo) rmeUndo.onclick = () => { onEditUndo(); };
+    if (rmeReset) rmeReset.onclick = () => { onEditReset(); };
 
     function fullHexSummary() {
       return [
@@ -2398,8 +2843,14 @@ import * as THREE from 'three';
         lines = [
           `Qty: ${HEX.qty * 3}`,
           `Dims: ${blankWhlLabel()}`,
-          `${HEX.qty} panels × 3`,
-          blankStockLeftoverNote()
+          `${HEX.qty} panels × 3`
+        ];
+      } else if (k === 'leftover') {
+        lines = [
+          `Qty: ${RAW_STOCK_QTY * 2}`,
+          `Dims: ${leftoverWhlLabel()}`,
+          `Note: ${leftoverSawdustNote()}`,
+          `After ${BLANKS_PER_RIPPED_HALF}× blanks / ripped half (RAW−n×BLANK−n×kerf)`
         ];
       } else if (k === 'beveled') {
         lines = [
@@ -2442,15 +2893,58 @@ import * as THREE from 'three';
      * Fill (or hide) the modal side panel: Machine Setup OR Material list.
      * @param {{ kind: 'machine', stepObj: object } | { kind: 'material', node: object } | null} spec
      */
+    function overrideTipHtml(ov) {
+      if (!ov) return '';
+      const bits = [];
+      if (ov.note) bits.push(`Note: ${ov.note}`);
+      if (ov.qtyLabel) bits.push(`Qty: ${ov.qtyLabel}`);
+      if (ov.dimsLabel) bits.push(`Dims: ${ov.dimsLabel}`);
+      if (ov.scale != null) bits.push(`Scale: ${ov.scale}`);
+      if (ov.highlightColor) bits.push(`Color: ${ov.highlightColor}`);
+      if (ov.miterDeg != null) bits.push(`Miter: ${ov.miterDeg}°`);
+      if (ov.bevelDeg != null) bits.push(`Bevel: ${ov.bevelDeg}°`);
+      if (!bits.length) return '';
+      return `<div class="rme-override-tip">Edit overlay — ${bits.join(' · ')}</div>`;
+    }
+
+    function setEditStatus(msg, kind) {
+      const el = document.getElementById('rmeStatus');
+      if (!el) return;
+      el.textContent = msg || 'Idle';
+      el.classList.toggle('is-error', kind === 'error');
+      el.classList.toggle('is-ok', kind === 'ok');
+    }
+
+    function syncEditChrome(n) {
+      const edit = document.getElementById('roleModalEdit');
+      const undoBtn = document.getElementById('rmeUndo');
+      const resetBtn = document.getElementById('rmeReset');
+      if (!edit || !undoBtn || !resetBtn) return;
+      if (!n || (n.kind !== 'material' && n.kind !== 'machine')) {
+        edit.hidden = true;
+        return;
+      }
+      edit.hidden = false;
+      const key = overrideKey(n.id, n.kind);
+      const entry = getOverrideEntry(key);
+      undoBtn.disabled = !(entry && entry.history && entry.history.length);
+      resetBtn.disabled = !(entry && (entry.current || (entry.history && entry.history.length)));
+    }
+
     function fillModalSide(spec) {
       const panel = document.getElementById('roleModalSetup');
+      const setupBody = document.getElementById('roleModalSetupBody');
       const body = document.querySelector('.role-modal-body');
+      const edit = document.getElementById('roleModalEdit');
       if (!panel || !body) return;
+      const target = setupBody || panel;
 
       let html = '';
       let mode = '';
+      let nodeForEdit = null;
       if (spec && spec.kind === 'machine') {
         const content = machineSetupContent(spec.stepObj);
+        nodeForEdit = spec.node || (graphModalNodeId ? nodeById(graphModalNodeId) : null);
         if (content) {
           mode = 'machine';
           const lis = content.settings.map((line) => `<li>${line}</li>`).join('');
@@ -2461,6 +2955,7 @@ import * as THREE from 'three';
         }
       } else if (spec && spec.kind === 'material') {
         const content = materialListContent(spec.node);
+        nodeForEdit = spec.node || null;
         if (content) {
           mode = 'material';
           const lis = content.lines.map((line) => `<li>${line}</li>`).join('');
@@ -2471,18 +2966,113 @@ import * as THREE from 'three';
         }
       }
 
+      // Append override tip into setup body when present
+      if (nodeForEdit) {
+        const ov = getCurrentOverride(nodeForEdit.id, nodeForEdit.kind);
+        html += overrideTipHtml(ov);
+      }
+
       // Keep .machinesetup for shared ms-* typography; materiallist only tints title
       panel.classList.add('machinesetup');
       panel.classList.toggle('materiallist', mode === 'material');
-      if (!html) {
-        panel.innerHTML = '';
+
+      const showEdit = !!(nodeForEdit && (nodeForEdit.kind === 'material' || nodeForEdit.kind === 'machine'));
+      if (edit) edit.hidden = !showEdit;
+
+      if (!html && !showEdit) {
+        if (setupBody) setupBody.innerHTML = '';
+        else panel.innerHTML = '';
         panel.hidden = true;
         body.classList.remove('has-setup');
+        syncEditChrome(null);
         return;
       }
       panel.hidden = false;
       body.classList.add('has-setup');
-      panel.innerHTML = html;
+      if (setupBody) setupBody.innerHTML = html;
+      else panel.innerHTML = html;
+      syncEditChrome(nodeForEdit);
+    }
+
+    function currentEditNode() {
+      if (!graphModalNodeId) return null;
+      return nodeById(graphModalNodeId);
+    }
+
+    function buildEditContext(n) {
+      const st = graphNodeState.get(n.id);
+      const ov = getCurrentOverride(n.id, n.kind);
+      return {
+        nodeId: n.id,
+        kind: n.kind,
+        title: n.title,
+        callout: (st && st.callout) || nodeCallout(n),
+        unitMode: units,
+        materialKey: n.materialKey || null,
+        machineVisual: n.machineVisual || null,
+        currentOverride: ov,
+        sceneBrief: n.kind === 'machine'
+          ? `Authored machine schematic (${n.machineVisual || 'unknown'}). Overrides may change miter/bevel/scale/labels.`
+          : `Authored material stack (${n.materialKey || 'unknown'}). Overrides may change scale/color/labels/qty/dims/note.`
+      };
+    }
+
+    async function onEditApply() {
+      const n = currentEditNode();
+      if (!n) return;
+      const promptEl = document.getElementById('rmePrompt');
+      const prompt = (promptEl && promptEl.value || '').trim();
+      if (!prompt) {
+        setEditStatus('Enter a short edit prompt', 'error');
+        return;
+      }
+      const applyBtn = document.getElementById('rmeApply');
+      if (applyBtn) applyBtn.disabled = true;
+      setEditStatus('Applying…', null);
+      try {
+        const result = await requestHexEdit(prompt, buildEditContext(n));
+        if (!result.ok || !result.override) {
+          setEditStatus(result.error || 'Apply failed', 'error');
+          return;
+        }
+        const key = overrideKey(n.id, n.kind);
+        setOverrideCurrent(key, result.override);
+        rebuildGraphNodeLive(n.id);
+        setEditStatus(result.mock ? 'Applied (mock)' : 'Applied', 'ok');
+      } catch (err) {
+        setEditStatus('Apply failed', 'error');
+      } finally {
+        if (applyBtn) applyBtn.disabled = false;
+        syncEditChrome(currentEditNode());
+      }
+    }
+
+    function onEditUndo() {
+      const n = currentEditNode();
+      if (!n) return;
+      const key = overrideKey(n.id, n.kind);
+      if (!undoOverride(key)) {
+        setEditStatus('Nothing to undo', 'error');
+        syncEditChrome(n);
+        return;
+      }
+      rebuildGraphNodeLive(n.id);
+      setEditStatus('Undo done', 'ok');
+      syncEditChrome(n);
+    }
+
+    function onEditReset() {
+      const n = currentEditNode();
+      if (!n) return;
+      const key = overrideKey(n.id, n.kind);
+      if (!resetOverride(key)) {
+        setEditStatus('No overrides', 'error');
+        syncEditChrome(n);
+        return;
+      }
+      rebuildGraphNodeLive(n.id);
+      setEditStatus('Reset to original', 'ok');
+      syncEditChrome(n);
     }
 
     /** Sidebar Machine Setup removed — lives in machine-node modal. */
