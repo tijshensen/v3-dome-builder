@@ -550,7 +550,7 @@ import * as THREE from 'three';
           machines: () => TOOL_MITER_SAW,
           settings: () => [
             'Bevel 0° (simple miter, not compound)',
-            `Dial miter ${HEX.base}° (HEX.base) off 90°`,
+            `Dial miter ${HEX.base}° off 90°`,
             'Stop block; cut close to the end; long-point to long-point'
           ]
         }
@@ -565,7 +565,7 @@ import * as THREE from 'three';
           machines: () => TOOL_MITER_SAW,
           settings: () => [
             'Bevel 0° (simple miter, not compound)',
-            `Dial miter ${HEX.apex}° (HEX.apex) off 90°`,
+            `Dial miter ${HEX.apex}° off 90°`,
             `Dial ${HEX.apex}° — do not trust the ~31.6° stop alone`,
             'Stop block; cut close to the end; long-point to long-point'
           ]
@@ -747,14 +747,14 @@ import * as THREE from 'three';
         return {
           qty: String(HEX.qty * 2),
           dims: finishedDimsLabel(),
-          note: `${HEX.base}° / HEX.base`
+          note: `${HEX.base}° base`
         };
       }
       if (k === 'mitered-apex') {
         return {
           qty: String(HEX.qty),
           dims: finishedDimsLabel(),
-          note: `${HEX.apex}° / HEX.apex`
+          note: `${HEX.apex}° apex`
         };
       }
       if (k === 'ears') {
@@ -1658,7 +1658,7 @@ import * as THREE from 'three';
         woodTarget.add(makeLabel(`base ${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.08, 0.08, 0))));
         woodTarget.add(makeLabel(`base ${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.08, 0.08, 0))));
         woodTarget.add(makeLabel(`${HEX.qty * 2} base ends`, new THREE.Vector3(0, 0.14, h / 2)));
-        return `${HEX.base}° / HEX.base`;
+        return `${HEX.base}° base`;
       }
       if (key === 'mitered-apex') {
         addJig(pA, pB, pC, h, c, false, false);
@@ -1669,7 +1669,7 @@ import * as THREE from 'three';
         woodTarget.add(s2, s3);
         woodTarget.add(makeLabel(`apex ${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
         woodTarget.add(makeLabel(`${HEX.qty} apex ends`, new THREE.Vector3(0, 0.14, h / 2)));
-        return `${HEX.apex}° / HEX.apex`;
+        return `${HEX.apex}° apex`;
       }
       if (key === 'ears') {
         addJig(pA, pB, pC, h, c, false, false);
@@ -2416,13 +2416,13 @@ import * as THREE from 'three';
         lines = [
           `Qty: ${HEX.qty * 2}`,
           `Dims: ${finishedDimsLabel()}`,
-          `Note: ${HEX.base}° / HEX.base`
+          `Note: ${HEX.base}° base`
         ];
       } else if (k === 'mitered-apex') {
         lines = [
           `Qty: ${HEX.qty}`,
           `Dims: ${finishedDimsLabel()}`,
-          `Note: ${HEX.apex}° / HEX.apex`
+          `Note: ${HEX.apex}° apex`
         ];
       } else if (k === 'ears') {
         lines = [`Compound ears + ${BEVEL_DEG}°`];
