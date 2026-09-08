@@ -1590,6 +1590,7 @@ import * as THREE from 'three';
     const OVERRIDE_STORAGE_KEY = 'hex-3d-overrides-v1';
     const OVERRIDE_MOCK_KEY = 'hex-3d-edit-mock';
     const OVERRIDE_SCHEMA_VERSION = 1;
+    const OVERRIDE_HISTORY_MAX = 20;
     const OVERRIDE_ALLOW = new Set([
       'schemaVersion', 'note', 'qtyLabel', 'dimsLabel', 'labelTexts',
       'stackCount', 'stackRows', 'scale', 'miterDeg', 'bevelDeg', 'highlightColor'
@@ -1667,8 +1668,9 @@ import * as THREE from 'three';
         if (!parsed || typeof parsed !== 'object') return;
         for (const [key, entry] of Object.entries(parsed)) {
           if (!entry || typeof entry !== 'object') continue;
+          // Preserve null history sentinels (= authored). Do NOT filter(Boolean).
           const history = Array.isArray(entry.history)
-            ? entry.history.map(validateOverride).filter(Boolean)
+            ? entry.history.map((h) => (h == null ? null : validateOverride(h))).slice(-OVERRIDE_HISTORY_MAX)
             : [];
           const current = entry.current ? validateOverride(entry.current) : null;
           if (current || history.length) {
@@ -1700,15 +1702,29 @@ import * as THREE from 'three';
       return e && e.current ? e.current : null;
     }
 
+    /** Deep-clone override snapshot; null stays null (= authored sentinel). */
+    function cloneOverrideSnapshot(ov) {
+      if (ov == null) return null;
+      try {
+        return JSON.parse(JSON.stringify(ov));
+      } catch (e) {
+        return null;
+      }
+    }
+
     function setOverrideCurrent(key, next) {
       let e = overrideStore.get(key);
       if (!e) {
         e = { history: [], current: null };
         overrideStore.set(key, e);
       }
-      // Always push previous current (null = authored) so Undo restores prior step
-      e.history.push(e.current);
-      e.current = next;
+      // Always push previous current (null = authored) so Undo restores prior step.
+      // Deep-clone so later mutates / shared refs cannot corrupt history.
+      e.history.push(cloneOverrideSnapshot(e.current));
+      if (e.history.length > OVERRIDE_HISTORY_MAX) {
+        e.history.splice(0, e.history.length - OVERRIDE_HISTORY_MAX);
+      }
+      e.current = cloneOverrideSnapshot(next);
       persistOverrides();
     }
 
@@ -4343,10 +4359,7 @@ import * as THREE from 'three';
         setOverrideCurrent(key, result.override);
         // Full live rebuild (thumb + open modal scene). Re-present modal so
         // CSS2D labels / camera framing refresh even if host was mid-frame.
-        rebuildGraphNodeLive(n.id);
-        if (modalOpen && graphModalNodeId === n.id) {
-          openGraphNodeModal(n.id);
-        }
+        refreshEditVisuals(n);
         setEditStatus(result.mock ? 'Applied (mock)' : 'Applied', 'ok');
       } catch (err) {
         setEditStatus('Apply failed', 'error');
@@ -4354,6 +4367,16 @@ import * as THREE from 'three';
         if (applyBtn) applyBtn.disabled = false;
         syncEditChrome(currentEditNode());
       }
+    }
+
+    /** Shared post-change refresh: live 3D/thumb + tip (same path as Apply). */
+    function refreshEditVisuals(n) {
+      if (!n) return;
+      rebuildGraphNodeLive(n.id);
+      if (modalOpen && graphModalNodeId === n.id) {
+        openGraphNodeModal(n.id);
+      }
+      syncEditChrome(n);
     }
 
     function onEditUndo() {
@@ -4365,9 +4388,8 @@ import * as THREE from 'three';
         syncEditChrome(n);
         return;
       }
-      rebuildGraphNodeLive(n.id);
+      refreshEditVisuals(n);
       setEditStatus('Undo done', 'ok');
-      syncEditChrome(n);
     }
 
     function onEditReset() {
@@ -4379,9 +4401,8 @@ import * as THREE from 'three';
         syncEditChrome(n);
         return;
       }
-      rebuildGraphNodeLive(n.id);
+      refreshEditVisuals(n);
       setEditStatus('Reset to original', 'ok');
-      syncEditChrome(n);
     }
 
     /** Sidebar Machine Setup removed — lives in machine-node modal. */
