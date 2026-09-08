@@ -542,38 +542,54 @@ import * as THREE from 'three';
       },
       {
         id: 6,
-        title: '7. Initial miters',
-        text: () => `Simple miters (not compound), long-point to long-point. Per panel: two @ ${HEX.base}° (bases) + one @ ${HEX.apex}° (apex), off 90°. Dial ${HEX.apex}° — do not trust the ~31.6° stop alone. First-end batch: ${HEX.qty * 2} × ${HEX.base}° + ${HEX.qty} × ${HEX.apex}°. Check overlap on the jig.`,
-        view: 'miters',
-        machineVisual: 'miterSimple',
+        title: '7. Initial miters · base',
+        text: () => `Simple miters (not compound). Cut base ends at ${HEX.base}° off 90°. Bevel 0°. Long-point to long-point. Batch: ${HEX.qty * 2} base ends (${HEX.qty} panels × 2). Check overlap on the jig.`,
+        view: 'mitersBase',
+        machineVisual: 'miterBase',
         machineSetup: {
           machines: () => TOOL_MITER_SAW,
           settings: () => [
             'Bevel 0° (simple miter, not compound)',
-            `Miter ${HEX.base}° (bases) or ${HEX.apex}° (apex) off 90°`,
-            `Dial ${HEX.apex}° — do not trust the ~31.6° stop alone`,
+            `Dial miter ${HEX.base}° (HEX.base) off 90°`,
             'Stop block; cut close to the end; long-point to long-point'
           ]
         }
       },
       {
         id: 7,
-        title: '8. Compound trim ears',
-        text: () => `Compound ear trim: same miter as step 7 + ${BEVEL_DEG}° bevel. Apex miter ${HEX.apex}° · base miters ${HEX.base}°. Dual bevel L/R — no flip. Stop block; check fit every 5–10 struts.`,
+        title: '8. Initial miters · apex',
+        text: () => `Simple miters (not compound). Cut apex ends at ${HEX.apex}° off 90°. Bevel 0°. Dial ${HEX.apex}° — do not trust the ~31.6° stop alone. Batch: ${HEX.qty} apex ends. Check overlap on the jig.`,
+        view: 'mitersApex',
+        machineVisual: 'miterApex',
+        machineSetup: {
+          machines: () => TOOL_MITER_SAW,
+          settings: () => [
+            'Bevel 0° (simple miter, not compound)',
+            `Dial miter ${HEX.apex}° (HEX.apex) off 90°`,
+            `Dial ${HEX.apex}° — do not trust the ~31.6° stop alone`,
+            'Stop block; cut close to the end; long-point to long-point'
+          ]
+        }
+      },
+      {
+        id: 8,
+        title: '9. Compound trim ears',
+        text: () => `Compound ear trim: keep the lane miter (base ${HEX.base}° or apex ${HEX.apex}°) + ${BEVEL_DEG}° bevel. Dual bevel L/R — no flip. Stop block; check fit every 5–10 struts.`,
         view: 'ears',
         machineVisual: 'miterCompound',
         machineSetup: {
           machines: () => `${TOOL_MITER_SAW} (prefer) · hand saw only if needed`,
           settings: () => [
-            `Same miter as step 7 + ${BEVEL_DEG}° bevel (compound)`,
+            `Keep lane miter + ${BEVEL_DEG}° bevel (compound)`,
+            `Base lane: miter ${HEX.base}° · Apex lane: miter ${HEX.apex}°`,
             'Dual bevel L/R — no flip for opposite bevels',
             'Stop block; check fit every 5–10 struts'
           ]
         }
       },
       {
-        id: 8,
-        title: '9. Assemble',
+        id: 9,
+        title: '10. Assemble',
         text: () => `Predrill if needed; two screws per corner; bevels out. QA: flip on jig — snug both ways.`,
         view: 'assemble',
         machineVisual: 'drill',
@@ -586,8 +602,8 @@ import * as THREE from 'three';
         }
       },
       {
-        id: 9,
-        title: '10. Done / counts',
+        id: 10,
+        title: '11. Done / counts',
         text: () => `Panel complete — final Hex counts below.`,
         view: 'done',
         machineVisual: 'none',
@@ -637,10 +653,15 @@ import * as THREE from 'three';
         { id: 'blank', kind: 'material', title: 'Blank', materialKey: 'blank', stepId: 1, x: 760, y: 0 },
         { id: 'beveled', kind: 'material', title: 'Beveled', materialKey: 'beveled', stepId: 4, x: 940, y: 100 },
 
-        { id: 'm-miterSimple', kind: 'machine', title: 'Initial miters', machineVisual: 'miterSimple', stepId: 6, x: 1120, y: 100 },
-        { id: 'mitered', kind: 'material', title: 'Mitered', materialKey: 'mitered', stepId: 6, x: 1300, y: 100 },
-        { id: 'm-miterCompound', kind: 'machine', title: 'Compound ears', machineVisual: 'miterCompound', stepId: 7, x: 1480, y: 100 },
-        { id: 'ears', kind: 'material', title: 'Ears', materialKey: 'ears', stepId: 7, x: 1660, y: 100 },
+        // fan-out: Initial miters · base vs apex lanes
+        { id: 'm-miterBase', kind: 'machine', title: 'Initial miters · base', machineVisual: 'miterBase', stepId: 6, x: 1120, y: 20 },
+        { id: 'm-miterApex', kind: 'machine', title: 'Initial miters · apex', machineVisual: 'miterApex', stepId: 7, x: 1120, y: 180 },
+        { id: 'mitered-base', kind: 'material', title: 'Mitered base', materialKey: 'mitered-base', stepId: 6, x: 1300, y: 20 },
+        { id: 'mitered-apex', kind: 'material', title: 'Mitered apex', materialKey: 'mitered-apex', stepId: 7, x: 1300, y: 180 },
+
+        // fan-in: one compound ears from both mitered lanes
+        { id: 'm-miterCompound', kind: 'machine', title: 'Compound ears', machineVisual: 'miterCompound', stepId: 8, x: 1520, y: 100 },
+        { id: 'ears', kind: 'material', title: 'Ears', materialKey: 'ears', stepId: 8, x: 1700, y: 100 },
 
         // parallel jig lane
         { id: 'jig', kind: 'material', title: 'Jig', materialKey: 'jig', stepId: 3, x: 560, y: 340 },
@@ -648,9 +669,9 @@ import * as THREE from 'three';
         { id: 'jig-stops', kind: 'material', title: 'Jig + stops', materialKey: 'jig-stops', stepId: 5, x: 760, y: 340 },
 
         // assemble fan-in
-        { id: 'm-drill', kind: 'machine', title: 'Assemble', machineVisual: 'drill', stepId: 8, x: 1840, y: 220 },
-        { id: 'assembled', kind: 'material', title: 'Assembled', materialKey: 'assembled', stepId: 8, x: 2020, y: 220 },
-        { id: 'done', kind: 'material', title: 'Done', materialKey: 'done', stepId: 9, x: 2200, y: 220 }
+        { id: 'm-drill', kind: 'machine', title: 'Assemble', machineVisual: 'drill', stepId: 9, x: 1880, y: 220 },
+        { id: 'assembled', kind: 'material', title: 'Assembled', materialKey: 'assembled', stepId: 9, x: 2060, y: 220 },
+        { id: 'done', kind: 'material', title: 'Done', materialKey: 'done', stepId: 10, x: 2240, y: 220 }
       ],
       edges: [
         { from: 'pdf-2x6', to: 'm-tableRip' },
@@ -666,9 +687,15 @@ import * as THREE from 'three';
         { from: 'optional-finish', to: 'm-tableBevel' },
         { from: 'm-tableBevel', to: 'beveled' },
 
-        { from: 'beveled', to: 'm-miterSimple' },
-        { from: 'm-miterSimple', to: 'mitered' },
-        { from: 'mitered', to: 'm-miterCompound' },
+        // fan-out from beveled → base / apex Initial miters
+        { from: 'beveled', to: 'm-miterBase', fan: true },
+        { from: 'beveled', to: 'm-miterApex', fan: true },
+        { from: 'm-miterBase', to: 'mitered-base' },
+        { from: 'm-miterApex', to: 'mitered-apex' },
+
+        // fan-in: both mitered lanes → one compound ears
+        { from: 'mitered-base', to: 'm-miterCompound', fan: true },
+        { from: 'mitered-apex', to: 'm-miterCompound', fan: true },
         { from: 'm-miterCompound', to: 'ears' },
 
         // jig lane
@@ -716,11 +743,18 @@ import * as THREE from 'three';
       if (k === 'jig-stops') {
         return { qty: '', dims: '', note: 'jig + backing stops' };
       }
-      if (k === 'mitered') {
+      if (k === 'mitered-base') {
         return {
-          qty: String(HEX.qty * 3),
+          qty: String(HEX.qty * 2),
           dims: finishedDimsLabel(),
-          note: `${HEX.base}° / ${HEX.apex}° miters`
+          note: `${HEX.base}° / HEX.base`
+        };
+      }
+      if (k === 'mitered-apex') {
+        return {
+          qty: String(HEX.qty),
+          dims: finishedDimsLabel(),
+          note: `${HEX.apex}° / HEX.apex`
         };
       }
       if (k === 'ears') {
@@ -762,6 +796,8 @@ import * as THREE from 'three';
         if (mv === 'tableRip') return `${TOOL_TABLE_SAW} · rip`;
         if (mv === 'tableBevel') return `${TOOL_TABLE_SAW} · ${BEVEL_DEG}°`;
         if (mv === 'miterCrosscut') return `${TOOL_MITER_SAW} · crosscut · ${blankStockLeftoverNote()}`;
+        if (mv === 'miterBase') return `${TOOL_MITER_SAW} · base ${HEX.base}°`;
+        if (mv === 'miterApex') return `${TOOL_MITER_SAW} · apex ${HEX.apex}°`;
         if (mv === 'miterSimple') return `${TOOL_MITER_SAW} · miters`;
         if (mv === 'miterCompound') return `${TOOL_MITER_SAW} · compound`;
         if (mv === 'handLayout') return 'hand layout · no saw';
@@ -1140,7 +1176,8 @@ import * as THREE from 'three';
 
     function hasSawVisual(kind) {
       return kind === 'tableRip' || kind === 'tableBevel' || kind === 'miterCrosscut'
-        || kind === 'miterSimple' || kind === 'miterCompound';
+        || kind === 'miterSimple' || kind === 'miterBase' || kind === 'miterApex'
+        || kind === 'miterCompound';
     }
 
     function setMachineHud(brand, title, lines) {
@@ -1381,12 +1418,16 @@ import * as THREE from 'three';
         });
       } else if (kind === 'miterCrosscut') {
         addMiterSawSchematic({ miterDeg: 0, bevelDeg: 0, stop: true, label: `crosscut ~${fmt(BLANK_LEN)}` });
+      } else if (kind === 'miterBase') {
+        addMiterSawSchematic({ miterDeg: HEX.base, bevelDeg: 0, stop: true, label: `base miter ${HEX.base}° · bevel 0°` });
+      } else if (kind === 'miterApex') {
+        addMiterSawSchematic({ miterDeg: HEX.apex, bevelDeg: 0, stop: true, label: `apex miter ${HEX.apex}° · bevel 0°` });
       } else if (kind === 'miterSimple') {
         addMiterSawSchematic({ miterDeg: HEX.apex, bevelDeg: 0, stop: true, label: `miters ${HEX.base}° / ${HEX.apex}°` });
       } else if (kind === 'miterCompound') {
         addMiterSawSchematic({
           miterDeg: HEX.apex, bevelDeg: BEVEL_DEG, bevelSide: 'L', stop: true, compound: true,
-          label: `compound ears ${HEX.apex}° + ${BEVEL_DEG}° · RH = opposite tilt`
+          label: `compound ears · keep miter + ${BEVEL_DEG}° · RH = opposite tilt`
         });
       } else if (kind === 'handLayout' || kind === 'drill' || kind === 'none') {
         addNoMachineVisual(kind);
@@ -1609,19 +1650,26 @@ import * as THREE from 'three';
         woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
         return 'jig + backing stops';
       }
-      if (key === 'mitered') {
+      if (key === 'mitered-base') {
         addJig(pA, pB, pC, h, c, false, false);
         const s1 = placeStrut(pA, pB, up);
-        const s2 = placeStrut(pB, pC, up);
-        const s3 = placeStrut(pC, pA, up);
         s1.position.z -= 0.22;
-        s2.position.x += 0.22;
-        s3.position.x -= 0.22;
-        woodTarget.add(s1, s2, s3);
-        woodTarget.add(makeLabel(`apex ${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        woodTarget.add(s1);
         woodTarget.add(makeLabel(`base ${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.08, 0.08, 0))));
         woodTarget.add(makeLabel(`base ${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.08, 0.08, 0))));
-        return `${HEX.base}° / ${HEX.apex}° miters`;
+        woodTarget.add(makeLabel(`${HEX.qty * 2} base ends`, new THREE.Vector3(0, 0.14, h / 2)));
+        return `${HEX.base}° / HEX.base`;
+      }
+      if (key === 'mitered-apex') {
+        addJig(pA, pB, pC, h, c, false, false);
+        const s2 = placeStrut(pB, pC, up);
+        const s3 = placeStrut(pC, pA, up);
+        s2.position.x += 0.22;
+        s3.position.x -= 0.22;
+        woodTarget.add(s2, s3);
+        woodTarget.add(makeLabel(`apex ${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        woodTarget.add(makeLabel(`${HEX.qty} apex ends`, new THREE.Vector3(0, 0.14, h / 2)));
+        return `${HEX.apex}° / HEX.apex`;
       }
       if (key === 'ears') {
         addJig(pA, pB, pC, h, c, false, false);
@@ -2027,28 +2075,41 @@ import * as THREE from 'three';
         addJig(pA, pB, pC, h, c, true);
         woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
         outCall = 'jig + backing stops';
-      } else if (view === 'miters') {
+      } else if (view === 'mitersBase') {
         addMaterialsPad(1.0, 0.9);
         const blank = new THREE.Mesh(new THREE.BoxGeometry(0.7, STRUT_H / 1000 * 8, STOCK_W / 1000 * 6), woodMat);
         blank.position.set(0, 0.08, 0);
         woodTarget.add(blank);
         addDarkOutline(blank);
-        woodTarget.add(makeLabel('bevelled blank', new THREE.Vector3(0, 0.28, 0)));
-        matCall = `blank · face ${fmt(STRUT_W)}`;
+        woodTarget.add(makeLabel('beveled blank', new THREE.Vector3(0, 0.28, 0)));
+        matCall = `beveled · face ${fmt(STRUT_W)}`;
 
         woodTarget = outputRoot;
         addJig(pA, pB, pC, h, c, false, false);
         const s1 = placeStrut(pA, pB, up);
-        const s2 = placeStrut(pB, pC, up);
-        const s3 = placeStrut(pC, pA, up);
         s1.position.z -= 0.22;
-        s2.position.x += 0.22;
-        s3.position.x -= 0.22;
-        woodTarget.add(s1, s2, s3);
-        woodTarget.add(makeLabel(`apex ${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        woodTarget.add(s1);
         woodTarget.add(makeLabel(`base ${HEX.base}°`, pA.clone().add(new THREE.Vector3(-0.08, 0.08, 0))));
         woodTarget.add(makeLabel(`base ${HEX.base}°`, pB.clone().add(new THREE.Vector3(0.08, 0.08, 0))));
-        outCall = `${HEX.base}° / ${HEX.apex}° miters`;
+        outCall = `${HEX.qty * 2} · base ${HEX.base}°`;
+      } else if (view === 'mitersApex') {
+        addMaterialsPad(1.0, 0.9);
+        const blank = new THREE.Mesh(new THREE.BoxGeometry(0.7, STRUT_H / 1000 * 8, STOCK_W / 1000 * 6), woodMat);
+        blank.position.set(0, 0.08, 0);
+        woodTarget.add(blank);
+        addDarkOutline(blank);
+        woodTarget.add(makeLabel('beveled blank', new THREE.Vector3(0, 0.28, 0)));
+        matCall = `beveled · face ${fmt(STRUT_W)}`;
+
+        woodTarget = outputRoot;
+        addJig(pA, pB, pC, h, c, false, false);
+        const s2 = placeStrut(pB, pC, up);
+        const s3 = placeStrut(pC, pA, up);
+        s2.position.x += 0.22;
+        s3.position.x -= 0.22;
+        woodTarget.add(s2, s3);
+        woodTarget.add(makeLabel(`apex ${HEX.apex}°`, pC.clone().add(new THREE.Vector3(0, 0.08, 0.04))));
+        outCall = `${HEX.qty} · apex ${HEX.apex}°`;
       } else if (view === 'ears') {
         addJig(pA, pB, pC, h, c, false, false);
         woodTarget.add(placeStrut(pA, pB, up), placeStrut(pB, pC, up), placeStrut(pC, pA, up));
@@ -2105,6 +2166,8 @@ import * as THREE from 'three';
         if (mv === 'tableRip') machCall = `${TOOL_TABLE_SAW} · rip`;
         else if (mv === 'tableBevel') machCall = `${TOOL_TABLE_SAW} · ${BEVEL_DEG}°`;
         else if (mv === 'miterCrosscut') machCall = `${TOOL_MITER_SAW} · crosscut`;
+        else if (mv === 'miterBase') machCall = `${TOOL_MITER_SAW} · base ${HEX.base}°`;
+        else if (mv === 'miterApex') machCall = `${TOOL_MITER_SAW} · apex ${HEX.apex}°`;
         else if (mv === 'miterSimple') machCall = `${TOOL_MITER_SAW} · miters`;
         else if (mv === 'miterCompound') machCall = `${TOOL_MITER_SAW} · compound`;
         else if (mv === 'handLayout') machCall = 'hand layout · no saw';
@@ -2349,8 +2412,18 @@ import * as THREE from 'three';
         ];
       } else if (k === 'jig-stops') {
         lines = ['Jig + backing stops'];
-      } else if (k === 'mitered') {
-        lines = [`Miters: ${HEX.base}° / ${HEX.apex}°`];
+      } else if (k === 'mitered-base') {
+        lines = [
+          `Qty: ${HEX.qty * 2}`,
+          `Dims: ${finishedDimsLabel()}`,
+          `Note: ${HEX.base}° / HEX.base`
+        ];
+      } else if (k === 'mitered-apex') {
+        lines = [
+          `Qty: ${HEX.qty}`,
+          `Dims: ${finishedDimsLabel()}`,
+          `Note: ${HEX.apex}° / HEX.apex`
+        ];
       } else if (k === 'ears') {
         lines = [`Compound ears + ${BEVEL_DEG}°`];
       } else if (k === 'assembled') {
