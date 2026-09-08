@@ -1175,40 +1175,80 @@ import * as THREE from 'three';
       return validateOverride(out);
     }
 
+    async function readHexEditError(res) {
+      const statusBit = `Edit API error ${res.status}`;
+      try {
+        const data = await res.json();
+        if (data && typeof data.error === 'string' && data.error.trim()) {
+          return data.error.trim();
+        }
+        if (data && data.ok === false) {
+          return statusBit;
+        }
+      } catch (e) {
+        try {
+          const text = await res.clone().text();
+          if (text && text.trim()) {
+            const t = text.trim().slice(0, 240);
+            return `${statusBit}: ${t}`;
+          }
+        } catch (e2) {}
+      }
+      return statusBit;
+    }
+
+    async function fetchHexEditOnce(prompt, context) {
+      return fetch('/api/hex-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, context, schemaVersion: OVERRIDE_SCHEMA_VERSION })
+      });
+    }
+
     async function requestHexEdit(prompt, context) {
       if (useMockEdit()) {
         const override = mockOverrideFromPrompt(prompt, context);
         if (!override) return { ok: false, error: 'Mock found no keywords. Try: taller, note: …, qty 10, red, miter 30' };
         return { ok: true, override, mock: true };
       }
-      try {
-        const res = await fetch('/api/hex-edit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, context, schemaVersion: OVERRIDE_SCHEMA_VERSION })
-        });
-        if (res.status === 404) {
-          const override = mockOverrideFromPrompt(prompt, context);
-          if (!override) return { ok: false, error: 'Edit API missing (404). Enable mock with ?mockEdit=1' };
-          return { ok: true, override, mock: true };
+      let lastNetworkError = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await fetchHexEditOnce(prompt, context);
+          if (res.status === 404) {
+            const override = mockOverrideFromPrompt(prompt, context);
+            if (!override) return { ok: false, error: 'Edit API missing (404). Enable mock with ?mockEdit=1' };
+            return { ok: true, override, mock: true };
+          }
+          // One automatic retry on 502 / 503 / 504
+          if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt === 0) {
+            continue;
+          }
+          if (!res.ok) {
+            const error = await readHexEditError(res);
+            return { ok: false, error };
+          }
+          const data = await res.json();
+          if (!data || !data.ok) {
+            return { ok: false, error: (data && data.error) || 'Edit failed' };
+          }
+          const override = validateOverride(data.override);
+          if (!override) {
+            return { ok: false, error: (data && data.error) || 'Override failed allowlist validation' };
+          }
+          return { ok: true, override };
+        } catch (err) {
+          lastNetworkError = err;
+          // One automatic retry on network failure
+          if (attempt === 0) continue;
         }
-        if (!res.ok) {
-          const override = mockOverrideFromPrompt(prompt, context);
-          if (override) return { ok: true, override, mock: true };
-          return { ok: false, error: `Edit API error ${res.status}` };
-        }
-        const data = await res.json();
-        if (!data || !data.ok) {
-          return { ok: false, error: (data && data.error) || 'Edit failed' };
-        }
-        const override = validateOverride(data.override);
-        if (!override) return { ok: false, error: 'Invalid override from API' };
-        return { ok: true, override };
-      } catch (err) {
-        const override = mockOverrideFromPrompt(prompt, context);
-        if (override) return { ok: true, override, mock: true };
-        return { ok: false, error: 'Network error — enable ?mockEdit=1 for offline QA' };
       }
+      return {
+        ok: false,
+        error: lastNetworkError
+          ? `Network error${lastNetworkError.message ? ': ' + String(lastNetworkError.message).slice(0, 160) : ''} — enable ?mockEdit=1 for offline QA`
+          : 'Network error — enable ?mockEdit=1 for offline QA'
+      };
     }
 
     loadOverridesFromStorage();
