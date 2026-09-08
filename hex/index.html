@@ -272,6 +272,86 @@
       border-color: var(--hex);
       box-shadow: 0 0 0 2px color-mix(in srgb, var(--hex) 45%, transparent);
     }
+    .graph-node.author-selected {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent);
+      z-index: 2;
+    }
+    .graph-shell.author-mode .graph-node { cursor: grab; }
+    .graph-shell.author-mode .graph-node.dragging { cursor: grabbing; }
+    .graph-shell.author-mode .graph-edges { pointer-events: auto; }
+    .graph-shell.author-mode .graph-edges path { pointer-events: stroke; cursor: pointer; }
+    .graph-toolbar .author-toolbar {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .graph-toolbar .author-toolbar[hidden],
+    .graph-toolbar .author-badge[hidden],
+    .author-hint[hidden] { display: none !important; }
+    .graph-toolbar .author-badge {
+      color: var(--accent); font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; font-size: 11px;
+    }
+    .graph-toolbar button.author-tool-active {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 18%, var(--btn));
+    }
+    .author-hint {
+      font-size: 11px; color: var(--accent); margin: 0 4px;
+    }
+    .author-panel {
+      position: absolute; z-index: 20; top: 48px; right: 12px;
+      width: min(360px, calc(100% - 24px));
+      background: var(--panel); border: 1px solid var(--line);
+      border-radius: 10px; box-shadow: 0 8px 28px #00000055;
+      padding: 10px 12px; font-size: 12px; color: var(--text);
+      display: flex; flex-direction: column; gap: 8px;
+      max-height: calc(100% - 64px); overflow: auto;
+    }
+    .author-panel[hidden] { display: none !important; }
+    .author-panel h3 {
+      margin: 0; font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--muted);
+    }
+    .author-panel label {
+      display: flex; flex-direction: column; gap: 3px;
+      font-size: 11px; color: var(--muted);
+    }
+    .author-panel label[hidden] { display: none !important; }
+    .author-panel input, .author-panel select, .author-panel textarea {
+      font: inherit; color: var(--text); background: var(--inset);
+      border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+    }
+    .author-panel textarea { min-height: 180px; resize: vertical; font-family: ui-monospace, monospace; font-size: 11px; }
+    .author-panel .ap-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .author-panel .ap-row label { flex: 1 1 80px; }
+    .graph-edges path.author-edge-selected {
+      stroke: var(--accent); stroke-width: 2.5px;
+    }
+    .author-add-dialog {
+      border: 1px solid var(--line); border-radius: 10px;
+      background: var(--panel); color: var(--text);
+      padding: 0; max-width: 380px; width: calc(100% - 24px);
+    }
+    .author-add-dialog::backdrop { background: #00000066; }
+    .author-add-dialog .aad-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+    }
+    .author-add-dialog .aad-body {
+      padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .author-add-dialog label {
+      display: flex; flex-direction: column; gap: 3px;
+      font-size: 11px; color: var(--muted);
+    }
+    .author-add-dialog label[hidden] { display: none !important; }
+    .author-add-dialog input, .author-add-dialog select {
+      font: inherit; color: var(--text); background: var(--inset);
+      border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+    }
+    .author-add-dialog .aad-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 4px; }
+
     .graph-node .gn-kind {
       font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
       text-transform: uppercase; color: var(--muted); margin: 0;
@@ -527,9 +607,58 @@
     <main class="graph-main" aria-label="Shop graph main view">
       <div class="graph-shell" id="graphShell" aria-label="Shop graph">
         <div class="graph-toolbar">
+          <strong id="authorModeBadge" class="author-badge" hidden>Author</strong>
+          <div id="authorToolbar" class="author-toolbar" hidden>
+            <button type="button" id="authorAddNode" title="Add a graph node">Add node</button>
+            <button type="button" id="authorAddEdge" title="Click source then target">Add edge</button>
+            <button type="button" id="authorDelete" title="Delete selected node or edge">Delete</button>
+            <button type="button" id="authorExport" title="Export nodes + edges JSON">Export</button>
+            <button type="button" id="authorReset" title="Reload committed GRAPH defaults">Reset authored</button>
+            <button type="button" id="authorExit" title="Leave author mode">Exit author mode</button>
+            <span id="authorHint" class="author-hint" hidden></span>
+          </div>
           <span class="graph-spacer"></span>
           <button type="button" id="graphFit" title="Fit graph">Fit</button>
           <button type="button" id="graphResetView" title="Reset pan/zoom">Reset view</button>
+        </div>
+        <div id="authorEditPanel" class="author-panel" hidden>
+          <h3>Edit node</h3>
+          <label>Title<input id="authorEditTitle" type="text" autocomplete="off" /></label>
+          <label>Kind<select id="authorEditKind"><option value="material">material</option><option value="machine">machine</option></select></label>
+          <label id="authorEditMatWrap">materialKey<select id="authorEditMaterialKey"></select></label>
+          <label id="authorEditMachWrap" hidden>machineVisual<select id="authorEditMachineVisual"></select></label>
+          <div class="ap-row">
+            <label>x<input id="authorEditX" type="number" step="1" /></label>
+            <label>y<input id="authorEditY" type="number" step="1" /></label>
+          </div>
+          <div class="ap-row">
+            <button type="button" id="authorEditApply" class="primary">Apply</button>
+            <button type="button" id="authorEditOpen">Open 3D</button>
+            <button type="button" id="authorEditClose">Close</button>
+          </div>
+        </div>
+        <div id="authorEdgePanel" class="author-panel" hidden>
+          <h3>Edge</h3>
+          <label>From<select id="authorEdgeFrom"></select></label>
+          <label>To<select id="authorEdgeTo"></select></label>
+          <label class="ap-row" style="flex-direction:row;align-items:center;gap:8px">
+            <input id="authorEdgeFan" type="checkbox" /> fan
+          </label>
+          <div class="ap-row">
+            <button type="button" id="authorEdgeApply">Apply / add</button>
+            <button type="button" id="authorEdgeDelete">Delete edge</button>
+            <button type="button" id="authorEdgeClose">Close</button>
+          </div>
+        </div>
+        <div id="authorExportPanel" class="author-panel" hidden>
+          <h3>Export GRAPH JSON</h3>
+          <textarea id="authorExportText" readonly spellcheck="false" aria-label="Exported graph JSON"></textarea>
+          <div class="ap-row">
+            <button type="button" id="authorExportCopy" class="primary">Copy</button>
+            <button type="button" id="authorExportDownload">Download</button>
+            <button type="button" id="authorExportClose">Close</button>
+          </div>
+          <span id="authorExportStatus" class="hint" aria-live="polite"></span>
         </div>
         <div class="graph-viewport" id="graphViewport">
           <div class="graph-world" id="graphWorld">
@@ -564,6 +693,21 @@
           <div class="rme-status" id="rmeStatus" aria-live="polite">Idle</div>
         </div>
       </aside>
+    </div>
+  </dialog>
+  <dialog id="authorAddNodeDialog" class="author-add-dialog" aria-labelledby="authorAddNodeTitle">
+    <div class="aad-bar">
+      <strong id="authorAddNodeTitle">Add node</strong>
+      <button type="button" id="authorAddNodeCancel">Close</button>
+    </div>
+    <div class="aad-body">
+      <label>Kind<select id="authorAddKind"><option value="material">material</option><option value="machine">machine</option></select></label>
+      <label>Title<input id="authorAddTitle" type="text" placeholder="Optional title" autocomplete="off" /></label>
+      <label id="authorAddMatWrap">materialKey<select id="authorAddMaterialKey"></select></label>
+      <label id="authorAddMachWrap" hidden>machineVisual<select id="authorAddMachineVisual"></select></label>
+      <div class="aad-actions">
+        <button type="button" id="authorAddNodeConfirm" class="primary">Add</button>
+      </div>
     </div>
   </dialog>
   <dialog id="settingsModal" class="settings-modal" aria-labelledby="settingsModalTitle">
@@ -902,6 +1046,408 @@ import * as THREE from 'three';
     function nodeById(id) {
       return GRAPH.nodes.find((n) => n.id === id);
     }
+
+    /** Deep clone of committed GRAPH — Reset authored restores from this. */
+    const GRAPH_DEFAULT = JSON.parse(JSON.stringify(GRAPH));
+    const AUTHOR_LS_KEY = 'hex-author-graph';
+
+    let authorMode = false;
+    let authorSelectedId = null;
+    let authorSelectedEdgeIdx = null; // index into GRAPH.edges
+    let authorEdgePick = null; // 'from' | 'to' while adding edge by click
+    let authorNodeDrag = null;
+    let authorSuppressClick = false;
+
+    function materialKeyAllowlist() {
+      const s = new Set();
+      for (const n of GRAPH_DEFAULT.nodes) {
+        if (n.kind === 'material' && n.materialKey) s.add(n.materialKey);
+      }
+      return [...s];
+    }
+    function machineVisualAllowlist() {
+      const s = new Set();
+      for (const n of GRAPH_DEFAULT.nodes) {
+        if (n.kind === 'machine' && n.machineVisual) s.add(n.machineVisual);
+      }
+      return [...s];
+    }
+
+    function readAuthorFlag() {
+      try {
+        if (localStorage.getItem(AUTHOR_LS_KEY) === '1') return true;
+      } catch (e) {}
+      try {
+        const q = new URLSearchParams(location.search);
+        if (q.get('authorGraph') === '1') return true;
+      } catch (e) {}
+      return false;
+    }
+
+    function persistAuthorFlag(on) {
+      try {
+        if (on) localStorage.setItem(AUTHOR_LS_KEY, '1');
+        else localStorage.removeItem(AUTHOR_LS_KEY);
+      } catch (e) {}
+    }
+
+    function enterAuthorFromQueryIfNeeded() {
+      try {
+        const q = new URLSearchParams(location.search);
+        if (q.get('authorGraph') === '1') persistAuthorFlag(true);
+      } catch (e) {}
+    }
+
+    function setAuthorHint(msg) {
+      const el = document.getElementById('authorHint');
+      if (!el) return;
+      if (msg) {
+        el.hidden = false;
+        el.textContent = msg;
+      } else {
+        el.hidden = true;
+        el.textContent = '';
+      }
+    }
+
+    function fillKeySelect(sel, keys, current) {
+      if (!sel) return;
+      sel.innerHTML = '';
+      for (const k of keys) {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = k;
+        if (k === current) opt.selected = true;
+        sel.appendChild(opt);
+      }
+      if (current && !keys.includes(current)) {
+        const opt = document.createElement('option');
+        opt.value = current;
+        opt.textContent = current + ' (custom)';
+        opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    function fillNodeIdSelect(sel, current) {
+      if (!sel) return;
+      sel.innerHTML = '';
+      for (const n of GRAPH.nodes) {
+        const opt = document.createElement('option');
+        opt.value = n.id;
+        opt.textContent = `${n.id} — ${n.title}`;
+        if (n.id === current) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    function exportGraphJson() {
+      const payload = {
+        nodes: GRAPH.nodes.map((n) => {
+          const o = { id: n.id, kind: n.kind, title: n.title, x: n.x, y: n.y };
+          if (n.kind === 'material') o.materialKey = n.materialKey;
+          if (n.kind === 'machine') o.machineVisual = n.machineVisual;
+          if (typeof n.stepId === 'number') o.stepId = n.stepId;
+          return o;
+        }),
+        edges: GRAPH.edges.map((e) => {
+          const o = { from: e.from, to: e.to };
+          if (e.fan) o.fan = true;
+          return o;
+        })
+      };
+      return JSON.stringify(payload, null, 2);
+    }
+
+    function syncAuthorChrome() {
+      const shell = document.getElementById('graphShell');
+      const badge = document.getElementById('authorModeBadge');
+      const bar = document.getElementById('authorToolbar');
+      if (shell) shell.classList.toggle('author-mode', authorMode);
+      if (badge) badge.hidden = !authorMode;
+      if (bar) bar.hidden = !authorMode;
+      const addEdgeBtn = document.getElementById('authorAddEdge');
+      if (addEdgeBtn) addEdgeBtn.classList.toggle('author-tool-active', !!authorEdgePick);
+      if (!authorMode) {
+        setAuthorHint('');
+        authorEdgePick = null;
+        const ep = document.getElementById('authorEditPanel');
+        const xp = document.getElementById('authorExportPanel');
+        const eg = document.getElementById('authorEdgePanel');
+        if (ep) ep.hidden = true;
+        if (xp) xp.hidden = true;
+        if (eg) eg.hidden = true;
+      }
+      // selection outlines
+      if (typeof graphNodesEl !== 'undefined' && graphNodesEl) {
+        graphNodesEl.querySelectorAll('.graph-node').forEach((el) => {
+          el.classList.toggle('author-selected', authorMode && el.dataset.nodeId === authorSelectedId);
+        });
+      }
+      if (typeof graphEdgesSvg !== 'undefined' && graphEdgesSvg) {
+        graphEdgesSvg.querySelectorAll('path[data-edge-idx]').forEach((p) => {
+          const idx = Number(p.dataset.edgeIdx);
+          p.classList.toggle('author-edge-selected', authorMode && authorSelectedEdgeIdx === idx);
+        });
+      }
+    }
+
+    function selectAuthorNode(id) {
+      authorSelectedId = id || null;
+      authorSelectedEdgeIdx = null;
+      if (authorMode && id) showAuthorEditPanel(id);
+      else {
+        const ep = document.getElementById('authorEditPanel');
+        if (ep) ep.hidden = true;
+      }
+      syncAuthorChrome();
+    }
+
+    function selectAuthorEdge(idx) {
+      authorSelectedEdgeIdx = (typeof idx === 'number') ? idx : null;
+      authorSelectedId = null;
+      const ep = document.getElementById('authorEditPanel');
+      if (ep) ep.hidden = true;
+      if (authorMode && authorSelectedEdgeIdx != null) showAuthorEdgePanel(authorSelectedEdgeIdx);
+      syncAuthorChrome();
+    }
+
+    function showAuthorEditPanel(id) {
+      const n = nodeById(id);
+      const panel = document.getElementById('authorEditPanel');
+      if (!n || !panel) return;
+      document.getElementById('authorExportPanel').hidden = true;
+      document.getElementById('authorEdgePanel').hidden = true;
+      panel.hidden = false;
+      document.getElementById('authorEditTitle').value = n.title || '';
+      document.getElementById('authorEditKind').value = n.kind;
+      document.getElementById('authorEditX').value = String(Math.round(n.x));
+      document.getElementById('authorEditY').value = String(Math.round(n.y));
+      fillKeySelect(document.getElementById('authorEditMaterialKey'), materialKeyAllowlist(), n.materialKey);
+      fillKeySelect(document.getElementById('authorEditMachineVisual'), machineVisualAllowlist(), n.machineVisual);
+      const matWrap = document.getElementById('authorEditMatWrap');
+      const machWrap = document.getElementById('authorEditMachWrap');
+      matWrap.hidden = n.kind !== 'material';
+      machWrap.hidden = n.kind !== 'machine';
+    }
+
+    function showAuthorEdgePanel(idx) {
+      const panel = document.getElementById('authorEdgePanel');
+      if (!panel) return;
+      document.getElementById('authorEditPanel').hidden = true;
+      document.getElementById('authorExportPanel').hidden = true;
+      panel.hidden = false;
+      const e = (idx != null && idx >= 0) ? GRAPH.edges[idx] : null;
+      fillNodeIdSelect(document.getElementById('authorEdgeFrom'), e ? e.from : (GRAPH.nodes[0] && GRAPH.nodes[0].id));
+      fillNodeIdSelect(document.getElementById('authorEdgeTo'), e ? e.to : (GRAPH.nodes[1] && GRAPH.nodes[1].id));
+      document.getElementById('authorEdgeFan').checked = !!(e && e.fan);
+    }
+
+    function applyAuthorEdit() {
+      const n = nodeById(authorSelectedId);
+      if (!n) return;
+      const title = document.getElementById('authorEditTitle').value.trim() || n.title;
+      const kind = document.getElementById('authorEditKind').value;
+      const x = Number(document.getElementById('authorEditX').value);
+      const y = Number(document.getElementById('authorEditY').value);
+      const prevKind = n.kind;
+      n.title = title;
+      n.kind = kind === 'machine' ? 'machine' : 'material';
+      if (Number.isFinite(x)) n.x = x;
+      if (Number.isFinite(y)) n.y = y;
+      if (n.kind === 'material') {
+        n.materialKey = document.getElementById('authorEditMaterialKey').value || materialKeyAllowlist()[0];
+        delete n.machineVisual;
+      } else {
+        n.machineVisual = document.getElementById('authorEditMachineVisual').value || machineVisualAllowlist()[0];
+        delete n.materialKey;
+      }
+      if (prevKind !== n.kind || true) {
+        rebuildGraphNodeLive(n.id);
+        renderGraphDom();
+        selectAuthorNode(n.id);
+      }
+    }
+
+    function uniqueNodeId(base) {
+      let id = base;
+      let i = 2;
+      while (nodeById(id)) {
+        id = `${base}-${i++}`;
+      }
+      return id;
+    }
+
+    function addAuthorNode(opts) {
+      const kind = opts.kind === 'machine' ? 'machine' : 'material';
+      const keys = kind === 'material' ? materialKeyAllowlist() : machineVisualAllowlist();
+      const key = opts.key || keys[0];
+      const title = (opts.title && opts.title.trim()) || key || 'Node';
+      const idBase = kind === 'machine' ? `m-${key}` : key;
+      const id = uniqueNodeId(idBase);
+      // place near viewport center in world coords
+      const vw = graphViewport.clientWidth || 600;
+      const vh = graphViewport.clientHeight || 400;
+      const wx = (vw / 2 - graphPan.x) / graphPan.scale - NODE_W / 2;
+      const wy = (vh / 2 - graphPan.y) / graphPan.scale - NODE_H / 2;
+      const node = {
+        id,
+        kind,
+        title,
+        x: Math.round(wx / 24) * 24,
+        y: Math.round(wy / 40) * 40
+      };
+      if (kind === 'material') node.materialKey = key;
+      else node.machineVisual = key;
+      GRAPH.nodes.push(node);
+      buildGraphNodeRoot(node);
+      renderGraphDom();
+      selectAuthorNode(id);
+      return node;
+    }
+
+    function deleteAuthorSelection() {
+      if (authorSelectedEdgeIdx != null) {
+        const e = GRAPH.edges[authorSelectedEdgeIdx];
+        if (!e) return;
+        if (!confirm(`Delete edge ${e.from} → ${e.to}?`)) return;
+        GRAPH.edges.splice(authorSelectedEdgeIdx, 1);
+        authorSelectedEdgeIdx = null;
+        document.getElementById('authorEdgePanel').hidden = true;
+        renderGraphDom();
+        syncAuthorChrome();
+        return;
+      }
+      if (!authorSelectedId) {
+        alert('Select a node or edge first.');
+        return;
+      }
+      const n = nodeById(authorSelectedId);
+      if (!n) return;
+      const edgeCount = GRAPH.edges.filter((e) => e.from === n.id || e.to === n.id).length;
+      const msg = edgeCount
+        ? `Delete node "${n.title}" and ${edgeCount} connected edge(s)?`
+        : `Delete node "${n.title}"?`;
+      if (!confirm(msg)) return;
+      // remove 3D state
+      const prev = graphNodeState.get(n.id);
+      if (prev) {
+        clearCss2dIn(prev.root);
+        if (prev.root.parent) prev.root.parent.remove(prev.root);
+        graphNodeState.delete(n.id);
+      }
+      if (graphModalNodeId === n.id) closeRoleModal(true);
+      GRAPH.edges = GRAPH.edges.filter((e) => e.from !== n.id && e.to !== n.id);
+      const ni = GRAPH.nodes.findIndex((x) => x.id === n.id);
+      if (ni >= 0) GRAPH.nodes.splice(ni, 1);
+      authorSelectedId = null;
+      document.getElementById('authorEditPanel').hidden = true;
+      renderGraphDom();
+      syncAuthorChrome();
+    }
+
+    function resetAuthoredGraph() {
+      if (!confirm('Reset graph to committed defaults? Unsaved author edits will be lost.')) return;
+      const fresh = JSON.parse(JSON.stringify(GRAPH_DEFAULT));
+      if (graphModalNodeId) closeRoleModal(true);
+      clearGraphNodeState();
+      GRAPH.nodes.length = 0;
+      GRAPH.edges.length = 0;
+      GRAPH.nodes.push(...fresh.nodes);
+      GRAPH.edges.push(...fresh.edges);
+      authorSelectedId = null;
+      authorSelectedEdgeIdx = null;
+      for (const n of GRAPH.nodes) buildGraphNodeRoot(n);
+      renderGraphDom();
+      document.getElementById('authorEditPanel').hidden = true;
+      document.getElementById('authorEdgePanel').hidden = true;
+      syncAuthorChrome();
+      try { fitGraphView(); } catch (e) {}
+    }
+
+    function setAuthorMode(on) {
+      authorMode = !!on;
+      if (!authorMode) {
+        authorSelectedId = null;
+        authorSelectedEdgeIdx = null;
+        authorEdgePick = null;
+        authorNodeDrag = null;
+        persistAuthorFlag(false);
+        // strip query flag on exit so refresh stays out
+        try {
+          const url = new URL(location.href);
+          if (url.searchParams.has('authorGraph')) {
+            url.searchParams.delete('authorGraph');
+            history.replaceState(null, '', url.pathname + url.search + url.hash);
+          }
+        } catch (e) {}
+      } else {
+        persistAuthorFlag(true);
+      }
+      syncAuthorChrome();
+      renderGraphDom();
+    }
+
+    function beginAddEdgeMode() {
+      if (!authorMode) return;
+      authorEdgePick = 'from';
+      authorSelectedEdgeIdx = null;
+      setAuthorHint('Click source node, then target');
+      document.getElementById('authorAddEdge').classList.add('author-tool-active');
+      showAuthorEdgePanel(null);
+      syncAuthorChrome();
+    }
+
+    function cancelAddEdgeMode() {
+      authorEdgePick = null;
+      setAuthorHint('');
+      const btn = document.getElementById('authorAddEdge');
+      if (btn) btn.classList.remove('author-tool-active');
+    }
+
+    function onAuthorNodeClick(n, ev) {
+      if (!authorMode) return false;
+      if (authorSuppressClick) {
+        authorSuppressClick = false;
+        return true;
+      }
+      if (authorEdgePick === 'from') {
+        document.getElementById('authorEdgeFrom').value = n.id;
+        authorEdgePick = 'to';
+        setAuthorHint(`From ${n.id} — click target`);
+        selectAuthorNode(n.id);
+        return true;
+      }
+      if (authorEdgePick === 'to') {
+        document.getElementById('authorEdgeTo').value = n.id;
+        // auto-add edge
+        const from = document.getElementById('authorEdgeFrom').value;
+        const to = n.id;
+        if (from && to && from !== to) {
+          const fan = document.getElementById('authorEdgeFan').checked;
+          const exists = GRAPH.edges.findIndex((e) => e.from === from && e.to === to);
+          if (exists < 0) {
+            const edge = { from, to };
+            if (fan) edge.fan = true;
+            GRAPH.edges.push(edge);
+            authorSelectedEdgeIdx = GRAPH.edges.length - 1;
+          } else {
+            authorSelectedEdgeIdx = exists;
+          }
+          cancelAddEdgeMode();
+          renderGraphDom();
+          showAuthorEdgePanel(authorSelectedEdgeIdx);
+          syncAuthorChrome();
+        } else {
+          setAuthorHint('Pick a different target');
+        }
+        return true;
+      }
+      // normal select
+      selectAuthorNode(n.id);
+      return true;
+    }
+
 
     /**
      * Material graph callout parts — qty + outer dims from panel-specs only.
@@ -2397,24 +2943,39 @@ import * as THREE from 'three';
             <path d="M0,0 L6,3 L0,6 Z" fill="currentColor" style="color:var(--accent)" />
           </marker>
         </defs>` +
-        GRAPH.edges.map((e) => {
+        GRAPH.edges.map((e, edgeIdx) => {
           const a = nodeById(e.from);
           const b = nodeById(e.to);
           if (!a || !b) return '';
           const isFan = fanIds.has(`${e.from}->${e.to}`);
-          return `<path class="${isFan ? 'fan' : ''}" d="${edgePath(a, b)}" marker-end="url(#${isFan ? 'gArrowFan' : 'gArrow'})" />`;
+          const sel = (authorMode && authorSelectedEdgeIdx === edgeIdx) ? ' author-edge-selected' : '';
+          return `<path data-edge-idx="${edgeIdx}" class="${isFan ? 'fan' : ''}${sel}" d="${edgePath(a, b)}" marker-end="url(#${isFan ? 'gArrowFan' : 'gArrow'})" />`;
         }).join('');
+
+      if (authorMode) {
+        graphEdgesSvg.querySelectorAll('path[data-edge-idx]').forEach((p) => {
+          p.style.pointerEvents = 'stroke';
+          p.style.cursor = 'pointer';
+          p.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const idx = Number(p.dataset.edgeIdx);
+            selectAuthorEdge(idx);
+            showAuthorEdgePanel(idx);
+          });
+        });
+      }
 
       graphNodesEl.innerHTML = '';
       for (const n of GRAPH.nodes) {
         const st = graphNodeState.get(n.id);
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = `graph-node ${n.kind}` + (n.stepId === step ? ' active' : '');
+        btn.className = `graph-node ${n.kind}` + (n.stepId === step ? ' active' : '') +
+          (authorMode && authorSelectedId === n.id ? ' author-selected' : '');
         btn.style.left = n.x + 'px';
         btn.style.top = n.y + 'px';
         btn.dataset.nodeId = n.id;
-        btn.title = 'Open interactive 3D';
+        btn.title = authorMode ? 'Select / drag (double-click opens 3D)' : 'Open interactive 3D';
         const callout = (st && st.callout) || nodeCallout(n);
         btn.innerHTML =
           `<div class="gn-kind">${n.kind}</div>` +
@@ -2450,11 +3011,89 @@ import * as THREE from 'three';
         if (st && st.preview) img.src = st.preview;
         btn.addEventListener('click', (ev) => {
           ev.stopPropagation();
+          if (authorMode) {
+            if (onAuthorNodeClick(n, ev)) return;
+          }
           openGraphNodeModal(n.id);
         });
+        btn.addEventListener('dblclick', (ev) => {
+          if (!authorMode) return;
+          ev.stopPropagation();
+          ev.preventDefault();
+          openGraphNodeModal(n.id);
+        });
+        if (authorMode) {
+          btn.addEventListener('pointerdown', (ev) => {
+            if (ev.button != null && ev.button !== 0) return;
+            // start node drag — pan handler skips .graph-node already
+            ev.stopPropagation();
+            btn.setPointerCapture(ev.pointerId);
+            authorNodeDrag = {
+              pid: ev.pointerId,
+              id: n.id,
+              startX: ev.clientX,
+              startY: ev.clientY,
+              origX: n.x,
+              origY: n.y,
+              moved: false
+            };
+            btn.classList.add('dragging');
+          });
+          btn.addEventListener('pointermove', (ev) => {
+            if (!authorNodeDrag || authorNodeDrag.pid !== ev.pointerId || authorNodeDrag.id !== n.id) return;
+            const dx = (ev.clientX - authorNodeDrag.startX) / graphPan.scale;
+            const dy = (ev.clientY - authorNodeDrag.startY) / graphPan.scale;
+            if (!authorNodeDrag.moved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+              authorNodeDrag.moved = true;
+              authorSuppressClick = true;
+            }
+            if (!authorNodeDrag.moved) return;
+            n.x = Math.round(authorNodeDrag.origX + dx);
+            n.y = Math.round(authorNodeDrag.origY + dy);
+            btn.style.left = n.x + 'px';
+            btn.style.top = n.y + 'px';
+            // live-update edges without full rebuild of nodes
+            const { w, h } = graphContentSize();
+            graphEdgesSvg.setAttribute('width', String(w));
+            graphEdgesSvg.setAttribute('height', String(h));
+            graphEdgesSvg.style.width = w + 'px';
+            graphEdgesSvg.style.height = h + 'px';
+            graphWorld.style.width = w + 'px';
+            graphWorld.style.height = h + 'px';
+            graphEdgesSvg.querySelectorAll('path[data-edge-idx]').forEach((p) => {
+              const idx = Number(p.dataset.edgeIdx);
+              const e = GRAPH.edges[idx];
+              if (!e) return;
+              const a = nodeById(e.from);
+              const b = nodeById(e.to);
+              if (!a || !b) return;
+              p.setAttribute('d', edgePath(a, b));
+            });
+            const xEl = document.getElementById('authorEditX');
+            const yEl = document.getElementById('authorEditY');
+            if (xEl && authorSelectedId === n.id) {
+              xEl.value = String(n.x);
+              yEl.value = String(n.y);
+            }
+          });
+          const endNodeDrag = (ev) => {
+            if (!authorNodeDrag || authorNodeDrag.pid !== ev.pointerId) return;
+            const moved = authorNodeDrag.moved;
+            btn.classList.remove('dragging');
+            authorNodeDrag = null;
+            if (moved) {
+              // refresh world size / selection; keep suppress until click
+              renderGraphDom();
+              selectAuthorNode(n.id);
+            }
+          };
+          btn.addEventListener('pointerup', endNodeDrag);
+          btn.addEventListener('pointercancel', endNodeDrag);
+        }
         graphNodesEl.appendChild(btn);
       }
       applyGraphTransform();
+      syncAuthorChrome();
     }
 
     function highlightGraphForStep() {
@@ -2538,6 +3177,179 @@ import * as THREE from 'three';
       graphPan = { x: 12, y: 16, scale: 0.72 };
       applyGraphTransform();
     };
+
+    // --- Author graph tooling (option C) ---
+    enterAuthorFromQueryIfNeeded();
+    authorMode = readAuthorFlag();
+
+    (function wireAuthorUi() {
+      const addKind = document.getElementById('authorAddKind');
+      const addMatWrap = document.getElementById('authorAddMatWrap');
+      const addMachWrap = document.getElementById('authorAddMachWrap');
+      function syncAddKindUi() {
+        const kind = addKind.value;
+        addMatWrap.hidden = kind !== 'material';
+        addMachWrap.hidden = kind !== 'machine';
+      }
+      fillKeySelect(document.getElementById('authorAddMaterialKey'), materialKeyAllowlist());
+      fillKeySelect(document.getElementById('authorAddMachineVisual'), machineVisualAllowlist());
+      if (addKind) addKind.onchange = syncAddKindUi;
+      syncAddKindUi();
+
+      const editKind = document.getElementById('authorEditKind');
+      if (editKind) {
+        editKind.onchange = () => {
+          const kind = editKind.value;
+          document.getElementById('authorEditMatWrap').hidden = kind !== 'material';
+          document.getElementById('authorEditMachWrap').hidden = kind !== 'machine';
+        };
+      }
+
+      document.getElementById('authorAddNode').onclick = () => {
+        fillKeySelect(document.getElementById('authorAddMaterialKey'), materialKeyAllowlist());
+        fillKeySelect(document.getElementById('authorAddMachineVisual'), machineVisualAllowlist());
+        syncAddKindUi();
+        const dlg = document.getElementById('authorAddNodeDialog');
+        if (dlg && typeof dlg.showModal === 'function') dlg.showModal();
+        else if (dlg) dlg.setAttribute('open', '');
+      };
+      document.getElementById('authorAddNodeCancel').onclick = () => {
+        const dlg = document.getElementById('authorAddNodeDialog');
+        if (dlg && typeof dlg.close === 'function') dlg.close();
+        else if (dlg) dlg.removeAttribute('open');
+      };
+      document.getElementById('authorAddNodeConfirm').onclick = () => {
+        const kind = document.getElementById('authorAddKind').value;
+        const title = document.getElementById('authorAddTitle').value;
+        const key = kind === 'machine'
+          ? document.getElementById('authorAddMachineVisual').value
+          : document.getElementById('authorAddMaterialKey').value;
+        addAuthorNode({ kind, title, key });
+        const dlg = document.getElementById('authorAddNodeDialog');
+        if (dlg && typeof dlg.close === 'function') dlg.close();
+        else if (dlg) dlg.removeAttribute('open');
+        document.getElementById('authorAddTitle').value = '';
+      };
+
+      document.getElementById('authorAddEdge').onclick = () => {
+        if (authorEdgePick) {
+          cancelAddEdgeMode();
+          document.getElementById('authorEdgePanel').hidden = true;
+          syncAuthorChrome();
+        } else {
+          beginAddEdgeMode();
+        }
+      };
+
+      document.getElementById('authorDelete').onclick = () => deleteAuthorSelection();
+
+      document.getElementById('authorExport').onclick = () => {
+        document.getElementById('authorEditPanel').hidden = true;
+        document.getElementById('authorEdgePanel').hidden = true;
+        const panel = document.getElementById('authorExportPanel');
+        panel.hidden = false;
+        document.getElementById('authorExportText').value = exportGraphJson();
+        document.getElementById('authorExportStatus').textContent = '';
+      };
+      document.getElementById('authorExportClose').onclick = () => {
+        document.getElementById('authorExportPanel').hidden = true;
+      };
+      document.getElementById('authorExportCopy').onclick = async () => {
+        const t = document.getElementById('authorExportText').value;
+        const st = document.getElementById('authorExportStatus');
+        try {
+          await navigator.clipboard.writeText(t);
+          st.textContent = 'Copied.';
+        } catch (e) {
+          document.getElementById('authorExportText').select();
+          st.textContent = 'Select + copy manually.';
+        }
+      };
+      document.getElementById('authorExportDownload').onclick = () => {
+        const t = document.getElementById('authorExportText').value;
+        const blob = new Blob([t], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'hex-graph.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        document.getElementById('authorExportStatus').textContent = 'Downloaded hex-graph.json';
+      };
+
+      document.getElementById('authorReset').onclick = () => resetAuthoredGraph();
+      document.getElementById('authorExit').onclick = () => setAuthorMode(false);
+
+      document.getElementById('authorEditApply').onclick = () => applyAuthorEdit();
+      document.getElementById('authorEditClose').onclick = () => {
+        document.getElementById('authorEditPanel').hidden = true;
+      };
+      document.getElementById('authorEditOpen').onclick = () => {
+        if (authorSelectedId) openGraphNodeModal(authorSelectedId);
+      };
+
+      document.getElementById('authorEdgeApply').onclick = () => {
+        const from = document.getElementById('authorEdgeFrom').value;
+        const to = document.getElementById('authorEdgeTo').value;
+        const fan = document.getElementById('authorEdgeFan').checked;
+        if (!from || !to || from === to) {
+          alert('Pick distinct from and to nodes.');
+          return;
+        }
+        if (authorSelectedEdgeIdx != null && GRAPH.edges[authorSelectedEdgeIdx]) {
+          const e = GRAPH.edges[authorSelectedEdgeIdx];
+          e.from = from;
+          e.to = to;
+          if (fan) e.fan = true;
+          else delete e.fan;
+        } else {
+          const exists = GRAPH.edges.findIndex((e) => e.from === from && e.to === to);
+          if (exists >= 0) {
+            authorSelectedEdgeIdx = exists;
+            if (fan) GRAPH.edges[exists].fan = true;
+            else delete GRAPH.edges[exists].fan;
+          } else {
+            const edge = { from, to };
+            if (fan) edge.fan = true;
+            GRAPH.edges.push(edge);
+            authorSelectedEdgeIdx = GRAPH.edges.length - 1;
+          }
+        }
+        cancelAddEdgeMode();
+        renderGraphDom();
+        showAuthorEdgePanel(authorSelectedEdgeIdx);
+        syncAuthorChrome();
+      };
+      document.getElementById('authorEdgeDelete').onclick = () => {
+        if (authorSelectedEdgeIdx == null) {
+          // try match from/to
+          const from = document.getElementById('authorEdgeFrom').value;
+          const to = document.getElementById('authorEdgeTo').value;
+          const idx = GRAPH.edges.findIndex((e) => e.from === from && e.to === to);
+          if (idx >= 0) authorSelectedEdgeIdx = idx;
+        }
+        if (authorSelectedEdgeIdx == null) {
+          alert('No edge selected.');
+          return;
+        }
+        deleteAuthorSelection();
+      };
+      document.getElementById('authorEdgeClose').onclick = () => {
+        cancelAddEdgeMode();
+        document.getElementById('authorEdgePanel').hidden = true;
+        authorSelectedEdgeIdx = null;
+        syncAuthorChrome();
+      };
+
+      // Reset view also clears author selection chrome when exiting via chrome
+      const resetBtn = document.getElementById('graphResetView');
+      const prevReset = resetBtn.onclick;
+      resetBtn.onclick = () => {
+        if (typeof prevReset === 'function') prevReset();
+        // Exit author mode if Shift held — otherwise leave as pan reset only
+      };
+    })();
+
+    syncAuthorChrome();
 
     function rebuild() {
       // CSS2D orphan clear before group.clear()
