@@ -2889,12 +2889,11 @@ import * as THREE from 'three';
     }
 
     function buildRipOutput(shared) {
-      // Two half stacks (stackCount × 2)
+      // Two half stacks (stackCount × 2). Length is BLANK_LEN after cut-first.
       addMaterialsPad(1.35, 1.0);
       const n = (shared && shared.stackCount != null) ? shared.stackCount : RAW_STOCK_QTY;
       const faceH = shared.faceH;
       const gap = shared.gap;
-      const faceL = shared.faceL;
       const yaw = shared.yaw;
       const stackMat = shared.stackMat;
       const stackBaseY = shared.stackBaseY;
@@ -2902,11 +2901,13 @@ import * as THREE from 'three';
       const halfLabel = halfDimsLabel();
       const halfFaceW = faceH * (STOCK_W / STRUT_H);
       const halfFaceH = faceH;
-      const halfFaceL = faceL;
+      // After cut-first: halves are BLANK_LEN long (not full RAW_STOCK_LEN)
+      const halfFaceL = Math.min(halfFaceW * (BLANK_LEN / STOCK_W), 0.70);
       const halfStackGap = Math.max(halfFaceW * 1.15, 0.08);
       const halfX0 = - (halfFaceW + halfStackGap) / 2;
       const halfX1 = (halfFaceW + halfStackGap) / 2;
       const halvesMidX = 0;
+      const labelN = RAW_STOCK_QTY * BLANKS_PER_BOARD;
       for (const hx of [halfX0, halfX1]) {
         for (let i = 0; i < n; i++) {
           const half = new THREE.Mesh(new THREE.BoxGeometry(halfFaceW, halfFaceH, halfFaceL), stackMat);
@@ -2919,8 +2920,9 @@ import * as THREE from 'three';
         }
       }
       woodTarget.add(makeLabel(halfLabel, new THREE.Vector3(halvesMidX, stackTopY + 0.09, 0)));
-      woodTarget.add(makeLabel(`${n} × 2  ·  ${n * 2} halves`, new THREE.Vector3(halvesMidX, stackBaseY - 0.08, 0)));
-      return `${n} × 2  ·  ${halfLabel}`;
+      const shownBit = n !== labelN ? `  (${n * 2} shown)` : '';
+      woodTarget.add(makeLabel(`${labelN} × 2  ·  ${labelN * 2} halves${shownBit}`, new THREE.Vector3(halvesMidX, stackBaseY - 0.08, 0)));
+      return `${labelN} × 2  ·  ${halfLabel}`;
     }
 
     /** Build shared material geometry into woodTarget for a GRAPH materialKey. */
@@ -2932,23 +2934,47 @@ import * as THREE from 'three';
         return shared.callout;
       }
       if (key === 'ripped-half') {
-        // Same stack metrics as rip materials, but only draw the two half stacks.
-        const n = Math.min(64, Math.max(1, (ov && ov.stackCount != null) ? ov.stackCount : RAW_STOCK_QTY));
-        const rows = Math.min(16, Math.max(1, (ov && ov.stackRows != null) ? ov.stackRows : 1));
-        const perCol = Math.ceil(n / rows);
-        const stackBudgetH = 0.94;
-        const gapRatio = 1.15;
-        const faceH = stackBudgetH / (perCol + gapRatio * Math.max(0, perCol - 1));
-        const gap = faceH * gapRatio;
-        const faceW = faceH * (FULL_2X6_W / STRUT_H);
-        const faceL = Math.min(faceW * (RAW_STOCK_LEN / FULL_2X6_W), 0.70);
-        const yaw = 0.35;
+        // Representative matched pair (Blank-style) — full qty derived, mesh count stays low for swiftshader.
+        // Halves are BLANK_LEN long after cut-first; do not use full RAW_STOCK_LEN.
+        if (ov && ov.stackCount != null) {
+          // Edit override: explicit stack (bounded like PDF stack) — same metrics as rip materials
+          const n = Math.min(64, Math.max(1, ov.stackCount));
+          const rows = Math.min(16, Math.max(1, ov.stackRows != null ? ov.stackRows : 1));
+          const perCol = Math.ceil(n / rows);
+          const faceH = 0.94 / (perCol + 1.15 * Math.max(0, perCol - 1));
+          const stackMat = woodMat.clone();
+          stackMat.emissive = new THREE.Color(0x2a1808);
+          stackMat.emissiveIntensity = 0.22;
+          const stackBaseY = 0.01;
+          const stackTopY = stackBaseY + perCol * faceH + Math.max(0, perCol - 1) * faceH * 1.15;
+          return buildRipOutput({ faceH, gap: faceH * 1.15, yaw: 0.35, stackMat, stackBaseY, stackTopY, stackCount: n, stackRows: rows });
+        }
+        addMaterialsPad(1.35, 1.0);
+        const blankQty = RAW_STOCK_QTY * BLANKS_PER_BOARD;
+        const halfQty = blankQty * 2;
         const stackMat = woodMat.clone();
         stackMat.emissive = new THREE.Color(0x2a1808);
         stackMat.emissiveIntensity = 0.22;
-        const stackBaseY = 0.01;
-        const stackTopY = stackBaseY + perCol * faceH + Math.max(0, perCol - 1) * gap;
-        return buildRipOutput({ faceH, gap, faceL, yaw, stackMat, stackBaseY, stackTopY, stackCount: n, stackRows: rows });
+        // Visual cross-section exaggerated for readability; length ratio from BLANK_LEN (clamped to pad)
+        const halfW = 0.16;
+        const halfH = halfW * (STRUT_H / STOCK_W);
+        const halfL = Math.min(halfW * (BLANK_LEN / STOCK_W), 0.95);
+        const gap = halfW * 0.6;
+        const yaw = 0.35;
+        const baseY = 0.01;
+        [- (halfW + gap) / 2, (halfW + gap) / 2].forEach((hx) => {
+          const half = new THREE.Mesh(new THREE.BoxGeometry(halfW, halfH, halfL), stackMat);
+          half.frustumCulled = false;
+          half.userData.isWoodContent = true;
+          half.rotation.y = yaw;
+          half.position.set(hx, baseY + halfH / 2, 0);
+          woodTarget.add(half);
+          addDarkOutline(half);
+        });
+        woodTarget.add(makeLabel(halfDimsLabel(), new THREE.Vector3(0, baseY + halfH + 0.30, 0)));
+        woodTarget.add(makeLabel(`${blankQty} × 2  ·  ${halfQty} halves`, new THREE.Vector3(0, baseY - 0.12, 0)));
+        woodTarget.add(makeLabel(`1 matched pair shown (2 of ${halfQty})`, new THREE.Vector3(0, baseY - 0.32, 0)));
+        return `${blankQty} × 2  ·  ${halfDimsLabel()}`;
       }
       if (key === 'optional-finish') {
         [-0.15, 0.15].forEach((x, i) => {
@@ -4154,6 +4180,7 @@ import * as THREE from 'three';
         ];
       } else if (k === 'beveled') {
         lines = [
+          `Qty: ${HEX.qty * 3}`,
           `Dims: ${finishedDimsLabel()} + ${BEVEL_DEG}°`
         ];
       } else if (k === 'jig') {
@@ -4176,7 +4203,10 @@ import * as THREE from 'three';
           `Note: ${HEX.apex}° apex`
         ];
       } else if (k === 'ears') {
-        lines = [`Compound ears + ${BEVEL_DEG}°`];
+        lines = [
+          `Qty: ${HEX.qty * 3}`,
+          `Compound ears + ${BEVEL_DEG}°`
+        ];
       } else if (k === 'assembled') {
         lines = ['Assembled frame'];
       } else if (k === 'done') {
@@ -4395,7 +4425,7 @@ import * as THREE from 'three';
         };
       } else if (key === 'beveled') {
         g = {
-          geometryBrief: `Beveled strut template: finished face ${STRUT_H}×${STRUT_W} mm with ${BEVEL_DEG}° bevel out. Same blank count as stock (${HEX.qty * 3}).`,
+          geometryBrief: `Beveled strut template: finished face ${STRUT_H}×${STRUT_W} mm with ${BEVEL_DEG}° bevel out. Stock yields ${RAW_STOCK_QTY * BLANKS_PER_BOARD} blanks; panels need ${HEX.qty * 3}.`,
           dimsMm: { height: STRUT_H, width: STRUT_W, length: BLANK_LEN },
           qty: HEX.qty * 3,
           bevelDeg: BEVEL_DEG,
