@@ -761,7 +761,7 @@ import * as THREE from 'three';
       BLANK_LEN_IN,
       FULL_2X6_W,
       FULL_2X6_W_IN,
-      RAW_STOCK_QTY,
+      RAW_STOCK_QTY as RAW_STOCK_QTY_PDF,
       RAW_STOCK_LEN,
       RAW_STOCK_LEN_IN,
       BLADE_KERF_MM,
@@ -777,6 +777,14 @@ import * as THREE from 'three';
 
     /** Blanks per RAW_STOCK_LEN full 2×6 board (video cut-first). */
     const BLANKS_PER_BOARD = 3;
+
+    /**
+     * Hex guide stock qty for Hex panel demand (73×3 struts).
+     * PDF lists RAW_STOCK_QTY_PDF for the whole frame (315-strut dome);
+     * this guide uses 37 so blank yield covers Hex demand with a small spare.
+     * Keep RAW_STOCK_LEN from panel-specs (4000).
+     */
+    const RAW_STOCK_QTY = 37;
 
     const STEPS = [
       {
@@ -1460,18 +1468,18 @@ import * as THREE from 'three';
         return { qty: `(${RAW_STOCK_QTY})`, dims: stockDimsLabel(), note: '' };
       }
       if (k === 'ripped-half') {
-        // 96 blanks × 2 halves = 192 (PDF-honest stock yield)
+        // RAW_STOCK_QTY × BLANKS_PER_BOARD × 2 halves (Hex stock yield)
         return { qty: String(RAW_STOCK_QTY * BLANKS_PER_BOARD * 2), dims: halfDimsLabel(), note: 'short halves' };
       }
       if (k === 'optional-finish') {
         return { qty: 'matched pair', dims: halfDimsLabel(), note: '' };
       }
       if (k === 'blank') {
-        // Pre-rip full 2×6 × BLANK_LEN; stock-derived 32×3=96
+        // Pre-rip full 2×6 × BLANK_LEN; stock-derived RAW_STOCK_QTY×BLANKS_PER_BOARD
         return {
           qty: String(RAW_STOCK_QTY * BLANKS_PER_BOARD),
           dims: blankWhlLabel(),
-          note: `panels need ${HEX.qty * 3}`
+          note: `panels need ${HEX.qty * 3} · ${RAW_STOCK_QTY * BLANKS_PER_BOARD * 2 - HEX.qty * 3} spare`
         };
       }
       if (k === 'leftover') {
@@ -4123,7 +4131,7 @@ import * as THREE from 'three';
         `Hex ×${HEX.qty} including 4 windows`,
         `Sides: ${fmt(HEX.a)} / ${fmt(HEX.b)} / base ${fmt(HEX.c)}`,
         `Miters off 90°: apex ${HEX.apex}° · bases ${HEX.base}° / ${HEX.base}°`,
-        `Stock: PDF (${RAW_STOCK_QTY}) 2×6 ×${fmt(RAW_STOCK_LEN)} → cut ${fmt(BLANK_LEN)} → rip ${fmt(STRUT_H)} × ${fmt(STOCK_W)} · bevel ${BEVEL_DEG}° → finished ${fmt(STRUT_H)} × ${fmt(STRUT_W)}`
+        `Stock: Hex (${RAW_STOCK_QTY}) 2×6 ×${fmt(RAW_STOCK_LEN)} → cut ${fmt(BLANK_LEN)} → rip ${fmt(STRUT_H)} × ${fmt(STOCK_W)} · bevel ${BEVEL_DEG}° → finished ${fmt(STRUT_H)} × ${fmt(STRUT_W)} (PDF lists ${RAW_STOCK_QTY_PDF} for whole 315-strut frame)`
       ].join('\n');
     }
 
@@ -4152,7 +4160,7 @@ import * as THREE from 'three';
         lines = [
           `Qty: (${RAW_STOCK_QTY})`,
           `Dims: ${stockDimsLabel()}`,
-          'Kiln-dried 2×6 · PDF stock'
+          `Kiln-dried 2×6 · Hex guide (${RAW_STOCK_QTY}); PDF lists ${RAW_STOCK_QTY_PDF} for whole frame (315-strut dome)`
         ];
       } else if (k === 'ripped-half') {
         lines = [
@@ -4169,7 +4177,7 @@ import * as THREE from 'three';
         lines = [
           `Qty: ${RAW_STOCK_QTY * BLANKS_PER_BOARD}`,
           `Dims: ${blankWhlLabel()}`,
-          `Full 2×6 × ${fmt(BLANK_LEN)} · panels need ${HEX.qty * 3}`
+          `Full 2×6 × ${fmt(BLANK_LEN)} · panels need ${HEX.qty * 3} · ${RAW_STOCK_QTY * BLANKS_PER_BOARD * 2 - HEX.qty * 3} spare`
         ];
       } else if (k === 'leftover') {
         lines = [
@@ -4381,7 +4389,7 @@ import * as THREE from 'three';
 
       if (key === 'pdf-2x6') {
         g = {
-          geometryBrief: `Stack of (${RAW_STOCK_QTY}) kiln-dried PDF 2×6 boards, ${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm. Cut blanks to ${BLANK_LEN} mm (= HEX.a) first.`,
+          geometryBrief: `Stack of (${RAW_STOCK_QTY}) kiln-dried 2×6 boards (Hex guide; PDF lists ${RAW_STOCK_QTY_PDF} for whole 315-strut frame), ${STRUT_H}×${FULL_2X6_W}×${RAW_STOCK_LEN} mm. Cut blanks to ${BLANK_LEN} mm (= HEX.a) first.`,
           dimsMm: { height: STRUT_H, width: FULL_2X6_W, length: RAW_STOCK_LEN },
           qty: RAW_STOCK_QTY,
           stackCount: RAW_STOCK_QTY,
@@ -4401,7 +4409,7 @@ import * as THREE from 'three';
         };
       } else if (key === 'blank') {
         g = {
-          geometryBrief: `${RAW_STOCK_QTY * BLANKS_PER_BOARD} full-width blanks (${BLANK_LEN} mm = HEX.a) from PDF 2×6, section ${FULL_2X6_W}×${STRUT_H} mm before rip. Panels need ${HEX.qty * 3}.`,
+          geometryBrief: `${RAW_STOCK_QTY * BLANKS_PER_BOARD} full-width blanks (${BLANK_LEN} mm = HEX.a) from PDF 2×6, section ${FULL_2X6_W}×${STRUT_H} mm before rip. Panels need ${HEX.qty * 3} (${RAW_STOCK_QTY * BLANKS_PER_BOARD * 2 - HEX.qty * 3} spare halves).`,
           dimsMm: { height: STRUT_H, width: FULL_2X6_W, length: BLANK_LEN },
           qty: RAW_STOCK_QTY * BLANKS_PER_BOARD,
           defaultColors: COLORS_WOOD,
@@ -4425,7 +4433,7 @@ import * as THREE from 'three';
         };
       } else if (key === 'beveled') {
         g = {
-          geometryBrief: `Beveled strut template: finished face ${STRUT_H}×${STRUT_W} mm with ${BEVEL_DEG}° bevel out. Stock yields ${RAW_STOCK_QTY * BLANKS_PER_BOARD} blanks; panels need ${HEX.qty * 3}.`,
+          geometryBrief: `Beveled strut template: finished face ${STRUT_H}×${STRUT_W} mm with ${BEVEL_DEG}° bevel out. Stock yields ${RAW_STOCK_QTY * BLANKS_PER_BOARD} blanks; panels need ${HEX.qty * 3} (${RAW_STOCK_QTY * BLANKS_PER_BOARD * 2 - HEX.qty * 3} spare halves).`,
           dimsMm: { height: STRUT_H, width: STRUT_W, length: BLANK_LEN },
           qty: HEX.qty * 3,
           bevelDeg: BEVEL_DEG,
